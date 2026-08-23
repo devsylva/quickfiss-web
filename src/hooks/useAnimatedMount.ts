@@ -7,6 +7,7 @@ export const useAnimatedMount = (show: boolean, exitDuration = 180) => {
 
   useEffect(() => {
     if (show) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- mount immediately, then flip `visible` on the next paint so the enter transition actually plays
       setRendered(true);
       const raf = requestAnimationFrame(() => setVisible(true));
       return () => cancelAnimationFrame(raf);
