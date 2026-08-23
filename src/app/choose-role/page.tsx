@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Home2, Briefcase } from "iconsax-react";
+import Image from "next/image";
 import { SelectCard } from "@/components/ui/SelectCard";
 import { Button } from "@/components/ui/Button";
 
@@ -16,6 +16,10 @@ export default function ChooseRolePage() {
     e.preventDefault();
     if (!role) return;
     // TODO: wire up to the real account-setup API once available.
+    if (role === "provider") {
+      router.push("/provider-onboarding/step-1");
+      return;
+    }
     router.push("/");
   };
 
@@ -31,14 +35,14 @@ export default function ChooseRolePage() {
           <SelectCard
             selected={role === "customer"}
             onSelect={() => setRole("customer")}
-            illustration={<Home2 size={40} color="#3d5afe" variant="Bulk" />}
+            illustration={<Image src="/images/role-customer.png" alt="" width={112} height={112} className="h-28 w-28 object-contain" />}
             title="I need repairs & services"
             description="Book skilled providers for home and business needs."
           />
           <SelectCard
             selected={role === "provider"}
             onSelect={() => setRole("provider")}
-            illustration={<Briefcase size={40} color="#3d5afe" variant="Bulk" />}
+            illustration={<Image src="/images/role-provider.png" alt="" width={112} height={112} className="h-28 w-28 object-contain" />}
             title="I want to offer my skills & services"
             description="Connect with clients and grow your business."
           />

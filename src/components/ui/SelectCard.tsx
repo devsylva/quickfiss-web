@@ -23,9 +23,7 @@ export const SelectCard: React.FC<SelectCardProps> = ({ selected, onSelect, illu
     >
       {selected && <span className="h-3 w-3 rounded-full bg-primary" />}
     </span>
-    <div className="mx-auto mb-4 flex h-24 w-24 items-center justify-center rounded-full bg-primary-light">
-      {illustration}
-    </div>
+    <div className="mx-auto mb-4 flex h-28 w-28 items-center justify-center">{illustration}</div>
     <h3 className="text-base font-semibold text-foreground">{title}</h3>
     <p className="mt-1 text-sm text-muted">{description}</p>
   </button>

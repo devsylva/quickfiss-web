@@ -46,10 +46,14 @@ export const Input: React.FC<InputProps> = ({
           <button
             type="button"
             onClick={() => setShowPassword((v) => !v)}
-            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600"
+            className="absolute right-3.5 top-1/2 -translate-y-1/2"
             tabIndex={-1}
           >
-            {showPassword ? <Eye size={20} variant="Linear" /> : <EyeSlash size={20} variant="Linear" />}
+            {showPassword ? (
+              <Eye size={20} color="#a1a1aa" variant="Linear" />
+            ) : (
+              <EyeSlash size={20} color="#a1a1aa" variant="Linear" />
+            )}
           </button>
         )}
       </div>
