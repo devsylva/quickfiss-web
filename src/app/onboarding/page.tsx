@@ -91,7 +91,7 @@ export default function OnboardingPage() {
       {/* -mt-8 pulls the panel up over the image's bottom edge so the rounded
           corners reveal the image behind them instead of blank page background. */}
       <div className="relative z-10 -mt-8 flex flex-1 flex-col rounded-t-card bg-primary-dark pb-32 pt-7 text-white lg:mt-0 lg:h-dvh lg:w-1/2 lg:justify-center lg:rounded-none lg:pb-0 lg:pt-0">
-        <div className="px-6 lg:mx-auto lg:w-full lg:max-w-md lg:px-20">
+        <div className="px-6 lg:mx-auto lg:w-full lg:max-w-xl lg:px-12">
           <div className="mb-8 flex gap-1.5">
             {slides.map((_, i) => (
               <button
@@ -129,7 +129,7 @@ export default function OnboardingPage() {
           </AnimatePresence>
         </div>
 
-        <div className="fixed inset-x-0 bottom-0 z-20 bg-primary-dark px-6 pb-8 pt-5 lg:static lg:inset-auto lg:mx-auto lg:mt-10 lg:w-full lg:max-w-md lg:bg-transparent lg:px-20 lg:pb-0 lg:pt-0">
+        <div className="fixed inset-x-0 bottom-0 z-20 bg-primary-dark px-6 pb-8 pt-5 lg:static lg:inset-auto lg:mx-auto lg:mt-10 lg:w-full lg:max-w-xl lg:bg-transparent lg:px-12 lg:pb-0 lg:pt-0">
           <Button variant="light" onClick={goNext}>
             {isLast ? "Get Started" : "Next"}
           </Button>

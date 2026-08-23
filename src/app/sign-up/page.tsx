@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { AuthLayout } from "@/components/layout/AuthLayout";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
@@ -9,6 +10,7 @@ import { AppleIcon, GoogleIcon } from "@/components/icons";
 import { isValidEmail } from "@/lib/validation";
 
 export default function SignUpPage() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -30,6 +32,7 @@ export default function SignUpPage() {
     if (!isValid) return;
     setIsSubmitting(true);
     // TODO: wire up to the real auth API once available.
+    router.push(`/verify-otp?email=${encodeURIComponent(email)}&next=/get-started`);
   };
 
   return (
