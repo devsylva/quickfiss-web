@@ -1,7 +1,7 @@
 import React from "react";
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: "primary" | "outline" | "oauth" | "link" | "light";
+  variant?: "primary" | "outline" | "oauth" | "link" | "light" | "secondary";
   isLoading?: boolean;
 }
 
@@ -22,6 +22,7 @@ export const Button: React.FC<ButtonProps> = ({
     oauth: "w-full rounded-btn border border-border bg-white py-3.5 text-sm text-foreground hover:bg-zinc-50 gap-2",
     link: "bg-transparent text-sm text-primary hover:text-primary-dark gap-1.5",
     light: "w-full rounded-btn bg-white py-4 text-sm text-primary hover:bg-zinc-50 gap-2",
+    secondary: "w-full rounded-btn bg-primary-light py-4 text-sm text-primary hover:bg-primary-light/70 gap-2",
   };
 
   return (

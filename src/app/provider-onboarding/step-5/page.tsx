@@ -26,7 +26,7 @@ export default function ProviderOnboardingStep5Page() {
     e.preventDefault();
     if (!isValid) return;
     // TODO: wire up to the real provider-onboarding API once available.
-    router.push("/");
+    router.push("/provider-onboarding/step-6");
   };
 
   return (

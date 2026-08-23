@@ -7,12 +7,16 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   error?: string;
   touched?: boolean;
+  icon?: React.ReactNode;
+  iconPosition?: "left" | "right";
 }
 
 export const Input: React.FC<InputProps> = ({
   label,
   error,
   touched,
+  icon,
+  iconPosition = "left",
   className = "",
   id,
   type = "text",
@@ -32,6 +36,9 @@ export const Input: React.FC<InputProps> = ({
         </label>
       )}
       <div className="relative w-full">
+        {icon && iconPosition === "left" && (
+          <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2">{icon}</span>
+        )}
         <input
           id={inputId}
           type={isPassword ? (showPassword ? "text" : "password") : type}
@@ -39,9 +46,14 @@ export const Input: React.FC<InputProps> = ({
             hasError
               ? "border-red-500 focus:ring-red-500/20"
               : "border-border hover:border-zinc-300 focus:border-primary focus:ring-primary/15"
-          } focus:ring-4 ${isPassword ? "pr-11" : ""} ${className}`}
+          } focus:ring-4 ${isPassword || (icon && iconPosition === "right") ? "pr-11" : ""} ${
+            icon && iconPosition === "left" ? "pl-11" : ""
+          } ${className}`}
           {...props}
         />
+        {icon && iconPosition === "right" && !isPassword && (
+          <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2">{icon}</span>
+        )}
         {isPassword && (
           <button
             type="button"

@@ -19,7 +19,7 @@
   --color-primary-light: var(--color-primary-light);
   --color-muted: var(--color-muted);
   --color-border: var(--color-border);
-  --font-sans: var(--font-archivo);
+  --font-sans: var(--font-urbanist);
 
   --radius-btn: 1rem;
   --radius-input: 0.875rem;
@@ -29,7 +29,7 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-archivo), Arial, Helvetica, sans-serif;
+  font-family: var(--font-urbanist), Arial, Helvetica, sans-serif;
 }
 
 /* ===========================

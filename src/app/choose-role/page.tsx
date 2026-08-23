@@ -20,7 +20,7 @@ export default function ChooseRolePage() {
       router.push("/provider-onboarding/step-1");
       return;
     }
-    router.push("/");
+    router.push("/customer-onboarding/step-1");
   };
 
   return (

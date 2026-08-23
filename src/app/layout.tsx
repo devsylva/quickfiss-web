@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import { Archivo } from "next/font/google";
+import { Urbanist } from "next/font/google";
 import "./globals.css";
 
-const archivo = Archivo({
-  variable: "--font-archivo",
+const urbanist = Urbanist({
+  variable: "--font-urbanist",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700", "800"],
 });
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${archivo.variable} h-full antialiased`}>
+    <html lang="en" className={`${urbanist.variable} h-full antialiased`}>
       <body className="min-h-full bg-white">{children}</body>
     </html>
   );
