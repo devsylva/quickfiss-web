@@ -1,8 +1,19 @@
+import Link from "next/link";
 import Image from "next/image";
 import { Gallery, Heart, Location, Star1 } from "iconsax-react";
 
-export interface Provider {
+export interface Review {
   name: string;
+  timeAgo: string;
+  rating: number;
+  title?: string;
+  body: string;
+}
+
+export interface Provider {
+  id: string;
+  name: string;
+  tagline?: string;
   priceFrom: string;
   tags: string[];
   distance: string;
@@ -10,10 +21,16 @@ export interface Provider {
   rating: number;
   reviewCount: number;
   image?: string;
+  location?: string;
+  contact?: string;
+  availabilityText?: string;
+  languageText?: string;
+  description?: string;
+  reviews?: Review[];
 }
 
 export const ProviderCard: React.FC<{ provider: Provider }> = ({ provider }) => (
-  <div>
+  <Link href={`/dashboard/provider/${provider.id}`} className="block">
     {provider.image ? (
       <div className="relative h-40 w-full overflow-hidden rounded-input bg-zinc-100">
         <Image src={provider.image} alt={provider.name} fill className="object-cover" />
@@ -60,5 +77,5 @@ export const ProviderCard: React.FC<{ provider: Provider }> = ({ provider }) => 
         {provider.rating.toFixed(1)} <span className="font-normal text-muted">({provider.reviewCount})</span>
       </span>
     </div>
-  </div>
+  </Link>
 );

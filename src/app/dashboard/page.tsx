@@ -2,21 +2,12 @@
 
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Home2, Truck, Cake, Monitor, Car, Trash, Brush, SearchNormal1 } from "iconsax-react";
+import { SearchNormal1 } from "iconsax-react";
 import { DashboardShell } from "@/components/layout/DashboardShell";
 import { ProviderCard } from "@/components/ui/ProviderCard";
 import { categories } from "@/lib/categories";
+import { categoryIcons } from "@/lib/categoryIcons";
 import { sampleProviders } from "@/lib/sampleProviders";
-
-const categoryIcons: Record<string, typeof Home2> = {
-  "home-services": Home2,
-  logistics: Truck,
-  "food-catering": Cake,
-  "tech-electronics": Monitor,
-  automotive: Car,
-  "cleaning-waste": Trash,
-  "personal-care": Brush,
-};
 
 const VISITED_KEY = "quickfiss_dashboard_visited";
 const featuredProviders = Object.values(sampleProviders).flat();
