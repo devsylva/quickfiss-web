@@ -23,7 +23,7 @@ export function BookingStep1Content({ provider }: { provider: Provider }) {
   };
 
   return (
-    <div className="flex min-h-dvh w-full items-center justify-center bg-white px-6 py-10">
+    <div className="flex min-h-dvh w-full items-start justify-center bg-white px-6 py-10 pt-16 lg:pt-24">
       <form onSubmit={handleSubmit} className="w-full lg:max-w-xl">
         <WizardStepHeading step={1} totalSteps={4} title="Describe the service you need" />
 

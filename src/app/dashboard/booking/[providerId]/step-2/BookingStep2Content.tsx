@@ -40,9 +40,12 @@ function BookingStep2Inner({ provider }: { provider: Provider }) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isValid) return;
-    // TODO: build steps 3-4 (review & confirm, payment) once those screens are provided.
-    router.push("/dashboard");
+    if (!isValid || !date || !time) return;
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("location", location);
+    params.set("date", date.toISOString());
+    params.set("time", `${time.hour}:${time.minute}:${time.meridiem}`);
+    router.push(`/dashboard/booking/${provider.id}/step-3?${params.toString()}`);
   };
 
   const filteredSuggestions = SUGGESTED_ADDRESSES.filter((a) =>
@@ -94,7 +97,7 @@ function BookingStep2Inner({ provider }: { provider: Provider }) {
   }
 
   return (
-    <div className="flex min-h-dvh w-full items-center justify-center bg-white px-6 py-10">
+    <div className="flex min-h-dvh w-full items-start justify-center bg-white px-6 py-10 pt-16 lg:pt-24">
       <form onSubmit={handleSubmit} className="w-full lg:max-w-xl">
         <WizardStepHeading step={2} totalSteps={4} title="Choose where & when the provider should come" />
         <p className="mb-6 text-sm text-muted">Booking with {provider.name}</p>
