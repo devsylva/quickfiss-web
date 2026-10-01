@@ -16,8 +16,14 @@ export function ScrollHandler() {
         if (element) {
           // Allow page DOM layout to settle before scrolling to target
           setTimeout(() => {
-            element.scrollIntoView({ behavior: "smooth", block: "start" });
-          }, 100);
+            const navOffset = 84;
+            const elementPosition = element.getBoundingClientRect().top;
+            const offsetPosition = elementPosition + window.pageYOffset - navOffset;
+            window.scrollTo({
+              top: offsetPosition,
+              behavior: "smooth",
+            });
+          }, 120);
           return;
         }
       }
@@ -45,7 +51,13 @@ export function ScrollHandler() {
         const element = document.getElementById(id);
         if (element) {
           e.preventDefault();
-          element.scrollIntoView({ behavior: "smooth", block: "start" });
+          const navOffset = 84;
+          const elementPosition = element.getBoundingClientRect().top;
+          const offsetPosition = elementPosition + window.pageYOffset - navOffset;
+          window.scrollTo({
+            top: offsetPosition,
+            behavior: "smooth",
+          });
           window.history.pushState(null, "", `#${id}`);
         }
       } else if (href === pathname || (href === "/" && pathname === "/")) {
