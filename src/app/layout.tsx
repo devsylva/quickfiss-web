@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Urbanist } from "next/font/google";
 import "./globals.css";
+import { ScrollHandler } from "@/components/common/ScrollHandler";
 
 const urbanist = Urbanist({
   variable: "--font-urbanist",
@@ -15,8 +16,11 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${urbanist.variable} h-full antialiased`}>
-      <body className="min-h-full bg-white">{children}</body>
+    <html lang="en" className={`${urbanist.variable} h-full antialiased scroll-smooth`}>
+      <body className="min-h-full bg-white">
+        <ScrollHandler />
+        {children}
+      </body>
     </html>
   );
 }

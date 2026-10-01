@@ -1,7 +1,35 @@
+"use client";
+
 import Link from "next/link";
-import { Flash, ShieldTick, Card, Call, Sms, Location } from "iconsax-react";
+import { usePathname } from "next/navigation";
+import { Flash, ShieldTick, Card, Call, Sms, Location, ArrowUp2 } from "iconsax-react";
 
 export function LandingFooter() {
+  const pathname = usePathname();
+
+  const scrollToTop = () => {
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+
+  const handleLinkClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    if (href.startsWith("/#") || href.startsWith("#")) {
+      const id = href.replace(/^\/?#/, "");
+      if (pathname === "/" || pathname === "") {
+        e.preventDefault();
+        const element = document.getElementById(id);
+        if (element) {
+          element.scrollIntoView({ behavior: "smooth", block: "start" });
+          window.history.pushState(null, "", `#${id}`);
+        }
+      }
+    } else if (href === pathname) {
+      e.preventDefault();
+      scrollToTop();
+    }
+  };
+
   return (
     <footer className="border-t border-zinc-800 bg-zinc-950 text-white">
       {/* Top Banner: Trust badges */}
@@ -44,11 +72,20 @@ export function LandingFooter() {
         <div className="grid grid-cols-1 gap-10 md:grid-cols-2 lg:grid-cols-5">
           {/* Brand Column */}
           <div className="lg:col-span-2">
-            <Link href="/" className="flex items-center gap-2.5">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-white shadow-md shadow-primary/30">
+            <Link
+              href="/"
+              onClick={(e) => {
+                if (pathname === "/") {
+                  e.preventDefault();
+                  scrollToTop();
+                }
+              }}
+              className="group flex items-center gap-2.5"
+            >
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-white shadow-md shadow-primary/30 transition-transform group-hover:scale-105">
                 <Flash size={20} color="#ffffff" variant="Bold" />
               </div>
-              <span className="font-sans text-2xl font-extrabold tracking-tight text-white">
+              <span className="font-sans text-2xl font-extrabold tracking-tight text-white transition-colors group-hover:text-primary">
                 Quickfiss
               </span>
             </Link>
@@ -113,7 +150,11 @@ export function LandingFooter() {
             <h4 className="text-sm font-bold text-white">Company</h4>
             <ul className="mt-4 flex flex-col gap-2.5 text-xs text-zinc-400">
               <li>
-                <Link href="/about" className="hover:text-white transition-colors">
+                <Link
+                  href="/about"
+                  onClick={(e) => handleLinkClick(e, "/about")}
+                  className="hover:text-white transition-colors"
+                >
                   About Us
                 </Link>
               </li>
@@ -123,17 +164,29 @@ export function LandingFooter() {
                 </Link>
               </li>
               <li>
-                <Link href="/#how-it-works" className="hover:text-white transition-colors">
+                <Link
+                  href="/#how-it-works"
+                  onClick={(e) => handleLinkClick(e, "/#how-it-works")}
+                  className="hover:text-white transition-colors"
+                >
                   How It Works
                 </Link>
               </li>
               <li>
-                <Link href="/#faq" className="hover:text-white transition-colors">
+                <Link
+                  href="/#faq"
+                  onClick={(e) => handleLinkClick(e, "/#faq")}
+                  className="hover:text-white transition-colors"
+                >
                   Help & FAQs
                 </Link>
               </li>
               <li>
-                <Link href="/contact" className="hover:text-white transition-colors">
+                <Link
+                  href="/contact"
+                  onClick={(e) => handleLinkClick(e, "/contact")}
+                  className="hover:text-white transition-colors"
+                >
                   Contact Support
                 </Link>
               </li>
@@ -145,22 +198,38 @@ export function LandingFooter() {
             <h4 className="text-sm font-bold text-white">Legal & Safety</h4>
             <ul className="mt-4 flex flex-col gap-2.5 text-xs text-zinc-400">
               <li>
-                <Link href="/privacy" className="hover:text-white transition-colors">
+                <Link
+                  href="/privacy"
+                  onClick={(e) => handleLinkClick(e, "/privacy")}
+                  className="hover:text-white transition-colors"
+                >
                   Privacy Policy
                 </Link>
               </li>
               <li>
-                <Link href="/terms" className="hover:text-white transition-colors">
+                <Link
+                  href="/terms"
+                  onClick={(e) => handleLinkClick(e, "/terms")}
+                  className="hover:text-white transition-colors"
+                >
                   Terms of Service
                 </Link>
               </li>
               <li>
-                <Link href="/#features" className="hover:text-white transition-colors">
+                <Link
+                  href="/#features"
+                  onClick={(e) => handleLinkClick(e, "/#features")}
+                  className="hover:text-white transition-colors"
+                >
                   KYC & Safety Guarantee
                 </Link>
               </li>
               <li>
-                <Link href="/contact" className="hover:text-white transition-colors">
+                <Link
+                  href="/contact"
+                  onClick={(e) => handleLinkClick(e, "/contact")}
+                  className="hover:text-white transition-colors"
+                >
                   Dispute Resolution
                 </Link>
               </li>
@@ -168,19 +237,40 @@ export function LandingFooter() {
           </div>
         </div>
 
-        {/* Bottom bar */}
+        {/* Bottom bar with Back to Top */}
         <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-zinc-800 pt-8 text-xs text-zinc-500 sm:flex-row">
           <p>© {new Date().getFullYear()} Quickfiss Technologies Inc. All rights reserved.</p>
           <div className="flex items-center gap-6">
-            <Link href="/privacy" className="hover:text-zinc-300 transition-colors">
+            <Link
+              href="/privacy"
+              onClick={(e) => handleLinkClick(e, "/privacy")}
+              className="hover:text-zinc-300 transition-colors"
+            >
               Privacy
             </Link>
-            <Link href="/terms" className="hover:text-zinc-300 transition-colors">
+            <Link
+              href="/terms"
+              onClick={(e) => handleLinkClick(e, "/terms")}
+              className="hover:text-zinc-300 transition-colors"
+            >
               Terms
             </Link>
-            <Link href="/contact" className="hover:text-zinc-300 transition-colors">
+            <Link
+              href="/contact"
+              onClick={(e) => handleLinkClick(e, "/contact")}
+              className="hover:text-zinc-300 transition-colors"
+            >
               Support
             </Link>
+            <button
+              type="button"
+              onClick={scrollToTop}
+              className="flex items-center gap-1 rounded-full border border-zinc-800 bg-zinc-900 px-3 py-1 text-zinc-400 hover:border-zinc-700 hover:text-white transition-all"
+              aria-label="Scroll back to top"
+            >
+              <span>Back to Top</span>
+              <ArrowUp2 size={14} color="currentColor" variant="Linear" />
+            </button>
           </div>
         </div>
       </div>
