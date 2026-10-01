@@ -25,18 +25,20 @@ export default function CustomerOnboardingStep2Page() {
   };
 
   return (
-    <div className="flex min-h-dvh w-full items-center justify-center bg-white px-6 py-12">
-      <form onSubmit={handleSubmit} className="w-full lg:max-w-xl">
+    <div className="flex min-h-dvh w-full items-center justify-center bg-white px-6 py-12 lg:py-16">
+      <form onSubmit={handleSubmit} className="w-full lg:max-w-2xl">
         <ProgressBar percent={100} />
 
-        <h1 className="mt-6 text-2xl font-extrabold leading-snug text-primary lg:text-3xl">
+        <h1 className="mt-6 text-2xl font-extrabold leading-snug text-primary sm:text-3xl lg:text-4xl">
           Let&rsquo;s get to know you
         </h1>
-        <p className="mt-2 text-sm text-muted">Enter your basic details to get started</p>
+        <p className="mt-2 text-sm text-muted sm:text-base">Enter your basic details to get started</p>
 
         <div className="mt-6 flex flex-col gap-5">
-          <Input placeholder="Enter your first name" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
-          <Input placeholder="Enter your last name" value={lastName} onChange={(e) => setLastName(e.target.value)} />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Input label="First Name" placeholder="Enter your first name" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+            <Input label="Last Name" placeholder="Enter your last name" value={lastName} onChange={(e) => setLastName(e.target.value)} />
+          </div>
 
           <div>
             <p className="mb-2 text-sm font-semibold text-foreground">Profile Picture</p>

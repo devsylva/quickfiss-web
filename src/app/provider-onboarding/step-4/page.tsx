@@ -60,10 +60,13 @@ const categories: Category[] = [
   },
 ];
 
+import { useProviderOnboardingStore } from "@/store/useProviderOnboardingStore";
+
 export default function ProviderOnboardingStep4Page() {
   const router = useRouter();
+  const store = useProviderOnboardingStore();
   const [expanded, setExpanded] = useState<string | null>(null);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [selected, setSelected] = useState<Set<string>>(new Set(store.services));
 
   const toggleService = (service: string) => {
     setSelected((prev) => {
@@ -77,7 +80,7 @@ export default function ProviderOnboardingStep4Page() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (selected.size === 0) return;
-    // TODO: wire up to the real provider-onboarding API once available.
+    store.setCustomizationStep4(Array.from(selected));
     router.push("/provider-onboarding/step-5");
   };
 

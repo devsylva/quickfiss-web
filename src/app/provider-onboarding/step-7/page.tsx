@@ -9,6 +9,11 @@ import { MultiSelect } from "@/components/ui/MultiSelect";
 import { RangeSlider } from "@/components/ui/RangeSlider";
 import { Button } from "@/components/ui/Button";
 
+import { TickCircle } from "iconsax-react";
+import { Modal } from "@/components/ui/Modal";
+import { useProviderOnboardingStore } from "@/store/useProviderOnboardingStore";
+import { onboardingApi } from "@/lib/api";
+
 const availabilityOptions = [
   { value: "morning", label: "Morning" },
   { value: "noon", label: "Noon" },
@@ -19,17 +24,49 @@ const formatNaira = (v: number) => `₦${v.toLocaleString()}`;
 
 export default function ProviderOnboardingStep7Page() {
   const router = useRouter();
-  const [location, setLocation] = useState("");
-  const [availability, setAvailability] = useState<string[]>([]);
-  const [priceRange, setPriceRange] = useState<[number, number]>([10000, 40000]);
+  const store = useProviderOnboardingStore();
+
+  const [location, setLocation] = useState(store.location);
+  const [availability, setAvailability] = useState<string[]>(store.availability);
+  const [priceRange, setPriceRange] = useState<[number, number]>(store.priceRange);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const isValid = location.trim() !== "" && availability.length > 0;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isValid) return;
-    // TODO: wire up to the real provider-onboarding API once available.
-    router.push("/");
+
+    store.setCustomizationStep7({ location, availability, priceRange });
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      const formData = new FormData();
+      store.services.forEach((s) => formData.append("services", s));
+      if (store.businessName) formData.append("business_name", store.businessName);
+      if (store.bio) formData.append("bio", store.bio);
+      if (store.businessAbout) formData.append("business_about", store.businessAbout);
+      if (store.serviceYears) formData.append("service_years", store.serviceYears);
+      if (store.language) formData.append("language", store.language);
+      formData.append("location", location);
+      availability.forEach((a) => formData.append("availability", a));
+      formData.append("min_price", String(priceRange[0]));
+      formData.append("max_price", String(priceRange[1]));
+      if (store.certification) formData.append("certification", store.certification);
+
+      await onboardingApi.submitArtisanCustomization(formData);
+      store.resetOnboarding();
+      setShowSuccess(true);
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : "Failed to submit customization. Continuing to dashboard...";
+      setError(errorMsg);
+      setShowSuccess(true);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -64,12 +101,31 @@ export default function ProviderOnboardingStep7Page() {
           </div>
         </div>
 
+        {error && (
+          <div className="mt-4 rounded-lg bg-red-50 p-3 text-xs text-red-600">
+            {error}
+          </div>
+        )}
+
         <div className="mt-8">
-          <Button type="submit" disabled={!isValid}>
-            Next
+          <Button type="submit" disabled={!isValid || isSubmitting}>
+            {isSubmitting ? "Setting up profile..." : "Complete Profile"}
           </Button>
         </div>
       </form>
+
+      <Modal open={showSuccess}>
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary-light">
+          <TickCircle size={32} color="#3d5afe" variant="Bold" />
+        </div>
+        <h2 className="mt-5 text-xl font-extrabold text-foreground">Welcome to Quickfiss! 🎉</h2>
+        <p className="mt-2 text-center text-sm text-muted">
+          Your artisan profile is ready. You can now start receiving booking requests and connecting with clients.
+        </p>
+        <div className="mt-6">
+          <Button onClick={() => router.push("/dashboard")}>Go to Dashboard</Button>
+        </div>
+      </Modal>
     </div>
   );
 }

@@ -37,16 +37,16 @@ export default function CustomerOnboardingStep1Page() {
   };
 
   return (
-    <div className="flex min-h-dvh w-full items-center justify-center bg-white px-6 py-12">
-      <form onSubmit={handleSubmit} className="w-full lg:max-w-xl">
+    <div className="flex min-h-dvh w-full items-center justify-center bg-white px-6 py-12 lg:py-16">
+      <form onSubmit={handleSubmit} className="w-full lg:max-w-2xl">
         <ProgressBar percent={50} />
 
-        <h1 className="mt-6 text-2xl font-extrabold leading-snug text-primary lg:text-3xl">
+        <h1 className="mt-6 text-2xl font-extrabold leading-snug text-primary sm:text-3xl lg:text-4xl">
           Personalise your experience
         </h1>
-        <p className="mt-2 text-sm text-muted">What services are you interested in?</p>
+        <p className="mt-2 text-sm text-muted sm:text-base">What services are you interested in?</p>
 
-        <div className="mt-6 flex flex-col gap-3">
+        <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
           {categories.map((category) => (
             <SelectListItem
               key={category}

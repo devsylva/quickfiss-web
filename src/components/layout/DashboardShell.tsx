@@ -44,14 +44,30 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({ children, addres
       <button
         type="button"
         onClick={() => router.push(href)}
-        className={`flex shrink-0 items-center transition-colors ${
-          rowLayout ? "w-full justify-start gap-3 rounded-input px-4 py-3" : "flex-col gap-1 px-3 py-1.5 lg:w-full lg:py-3"
+        title={!rowLayout ? label : undefined}
+        className={`group relative flex shrink-0 items-center transition-all duration-200 ${
+          rowLayout
+            ? `w-full justify-start gap-3 rounded-input px-3.5 py-3 ${
+                active
+                  ? "bg-primary-light text-primary font-semibold"
+                  : "text-muted hover:bg-zinc-100 hover:text-foreground"
+              }`
+            : `flex-col gap-1 rounded-xl px-2 py-2 lg:w-full lg:py-2.5 ${
+                active
+                  ? "bg-primary-light text-primary font-semibold"
+                  : "text-muted hover:bg-zinc-100 hover:text-foreground"
+              }`
         }`}
       >
-        <Icon size={22} color={active ? "#3d5afe" : "#a1a1aa"} variant={active ? "Bold" : "Linear"} />
+        <Icon
+          size={22}
+          color={active ? "#3d5afe" : "#71717a"}
+          variant={active ? "Bold" : "Linear"}
+          className="transition-transform duration-200 group-hover:scale-105"
+        />
         <span
           className={`whitespace-nowrap ${rowLayout ? "text-sm" : "text-xs"} ${
-            active ? "font-semibold text-primary" : "text-muted"
+            active ? "font-semibold text-primary" : "text-muted group-hover:text-foreground"
           }`}
         >
           {label}
@@ -62,54 +78,104 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({ children, addres
 
   return (
     <div className="flex h-dvh w-full flex-col overflow-hidden bg-white lg:flex-row">
-      <div
-        className={`hidden shrink-0 flex-col border-r border-border py-6 transition-[width] duration-300 lg:flex lg:gap-2 ${
-          expanded ? "lg:w-56 lg:items-stretch lg:px-3" : "lg:w-24 lg:items-center"
+      {/* Desktop Sidebar */}
+      <aside
+        className={`hidden shrink-0 flex-col justify-between border-r border-border bg-white py-6 transition-[width] duration-300 lg:flex ${
+          expanded ? "lg:w-60 lg:px-4" : "lg:w-22 lg:items-center lg:px-2"
         }`}
       >
-        <div className={`mb-4 flex items-center ${expanded ? "justify-between" : "justify-center"}`}>
-          <span
-            className={`overflow-hidden whitespace-nowrap text-lg font-extrabold text-primary transition-all duration-300 ${
-              expanded ? "max-w-[140px] opacity-100" : "max-w-0 opacity-0"
-            }`}
-          >
-            Quickfiss
-          </span>
+        <div className="flex w-full flex-col gap-2">
+          <div className={`mb-6 flex items-center ${expanded ? "justify-between px-2" : "justify-center"}`}>
+            <span
+              className={`overflow-hidden whitespace-nowrap text-xl font-extrabold tracking-tight text-primary transition-all duration-300 ${
+                expanded ? "max-w-[140px] opacity-100" : "max-w-0 opacity-0"
+              }`}
+            >
+              Quickfiss
+            </span>
+            <button
+              type="button"
+              onClick={() => setExpanded((v) => !v)}
+              aria-label={expanded ? "Collapse sidebar" : "Expand sidebar"}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-input text-zinc-400 hover:bg-zinc-100 hover:text-foreground transition-colors"
+            >
+              {expanded ? (
+                <ArrowLeft2 size={18} color="#71717a" variant="Linear" />
+              ) : (
+                <ArrowRight2 size={18} color="#71717a" variant="Linear" />
+              )}
+            </button>
+          </div>
+
+          <nav className="flex flex-col gap-1.5 w-full">
+            {navItems.map((item) => (
+              <NavButton key={item.href} {...item} expanded={expanded} />
+            ))}
+          </nav>
+        </div>
+
+        {/* Sidebar bottom profile shortcut on desktop */}
+        <div className="w-full border-t border-border pt-4">
           <button
             type="button"
-            onClick={() => setExpanded((v) => !v)}
-            aria-label={expanded ? "Collapse sidebar" : "Expand sidebar"}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-input text-zinc-400 hover:bg-zinc-100"
+            onClick={() => router.push("/dashboard/profile")}
+            className={`flex w-full items-center rounded-input transition-colors hover:bg-zinc-100 ${
+              expanded ? "gap-3 px-3 py-2.5 text-left" : "justify-center p-2"
+            }`}
           >
-            {expanded ? (
-              <ArrowLeft2 size={18} color="#a1a1aa" variant="Linear" />
-            ) : (
-              <ArrowRight2 size={18} color="#a1a1aa" variant="Linear" />
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-light text-sm font-bold text-primary">
+              Q
+            </div>
+            {expanded && (
+              <div className="flex min-w-0 flex-col">
+                <span className="truncate text-xs font-semibold text-foreground">My Profile</span>
+                <span className="truncate text-[11px] text-muted">View account</span>
+              </div>
             )}
           </button>
         </div>
-        {navItems.map((item) => (
-          <NavButton key={item.href} {...item} expanded={expanded} />
-        ))}
-      </div>
+      </aside>
 
+      {/* Main Content Area */}
       <div className="flex flex-1 flex-col overflow-hidden">
-        <div className="flex items-center justify-between border-b border-border px-6 py-4">
-          <button type="button" className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+        {/* Top Navbar */}
+        <header className="flex h-16 shrink-0 items-center justify-between border-b border-border bg-white px-6 lg:px-8">
+          <button
+            type="button"
+            className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-zinc-100"
+          >
             <Location size={18} color="#3d5afe" variant="Bold" />
-            <span className="max-w-[220px] truncate">{address || "Set your location"}</span>
+            <span className="max-w-[260px] truncate">{address || "Set your location"}</span>
             <ArrowDown2 size={14} color="#a1a1aa" />
           </button>
-          <Notification size={22} color="#171717" variant="Linear" />
-        </div>
 
-        <div className="flex-1 overflow-y-auto">{children}</div>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              aria-label="Notifications"
+              className="relative flex h-9 w-9 items-center justify-center rounded-full text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-foreground"
+            >
+              <Notification size={20} color="#171717" variant="Linear" />
+              <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-primary" />
+            </button>
+            <div className="hidden items-center gap-2.5 border-l border-border pl-3 sm:flex">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-light text-xs font-bold text-primary">
+                Q
+              </div>
+              <span className="text-sm font-medium text-foreground">Customer</span>
+            </div>
+          </div>
+        </header>
 
-        <div className="flex items-center justify-around border-t border-border py-2 lg:hidden">
+        {/* Scrollable Viewport */}
+        <main className="flex-1 overflow-y-auto">{children}</main>
+
+        {/* Mobile Bottom Navigation */}
+        <nav className="flex items-center justify-around border-t border-border bg-white py-2 lg:hidden">
           {navItems.map((item) => (
             <NavButton key={item.href} {...item} expanded={false} />
           ))}
-        </div>
+        </nav>
       </div>
     </div>
   );

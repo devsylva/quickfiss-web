@@ -15,17 +15,23 @@ const languageOptions = [
   { value: "yoruba", label: "Yoruba" },
 ];
 
+import { useProviderOnboardingStore } from "@/store/useProviderOnboardingStore";
+
 export default function ProviderOnboardingStep6Page() {
   const router = useRouter();
-  const [about, setAbout] = useState("");
-  const [language, setLanguage] = useState("");
+  const store = useProviderOnboardingStore();
+  const [about, setAbout] = useState(store.businessAbout);
+  const [language, setLanguage] = useState(store.language);
 
   const isValid = about.trim() !== "" && language !== "";
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!isValid) return;
-    // TODO: wire up to the real provider-onboarding API once available.
+    store.setCustomizationStep6({
+      businessAbout: about,
+      language,
+    });
     router.push("/provider-onboarding/step-7");
   };
 

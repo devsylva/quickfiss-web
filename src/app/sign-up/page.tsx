@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/Button";
 import { AppleIcon, GoogleIcon } from "@/components/icons";
 import { isValidEmail } from "@/lib/validation";
 
+import { authApi } from "@/lib/api/auth";
+
 export default function SignUpPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -16,6 +18,7 @@ export default function SignUpPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [touched, setTouched] = useState({ email: false, password: false, confirmPassword: false });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
 
   const markTouched = (field: keyof typeof touched) => () => setTouched((t) => ({ ...t, [field]: true }));
 
@@ -26,13 +29,36 @@ export default function SignUpPage() {
 
   const isValid = isValidEmail(email) && password.length >= 8 && password === confirmPassword;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setTouched({ email: true, password: true, confirmPassword: true });
-    if (!isValid) return;
+    if (!isValid || isSubmitting) return;
+
     setIsSubmitting(true);
-    // TODO: wire up to the real auth API once available.
-    router.push(`/verify-otp?email=${encodeURIComponent(email)}&next=/get-started`);
+    setApiError(null);
+
+    try {
+      const response = await authApi.register({
+        email,
+        password,
+        password2: confirmPassword,
+      });
+
+      const userRecord = response as unknown as Record<string, unknown> | null;
+      const userId = userRecord?.id || userRecord?.user_id || "";
+      const params = new URLSearchParams({
+        email,
+        next: "/get-started",
+      });
+      if (userId) params.set("userId", String(userId));
+
+      router.push(`/verify-otp?${params.toString()}`);
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : "Registration failed. Please check your details and try again.";
+      setApiError(errorMsg);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -40,6 +66,12 @@ export default function SignUpPage() {
       <form onSubmit={handleSubmit}>
         <h1 className="text-2xl font-extrabold text-primary">Create an account</h1>
         <p className="mt-1 text-sm font-medium text-primary/70">Let&rsquo;s get you started.</p>
+
+        {apiError && (
+          <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-medium text-red-700">
+            {apiError}
+          </div>
+        )}
 
         <div className="mt-8 flex flex-col gap-5">
           <Input

@@ -12,20 +12,28 @@ import { Button } from "@/components/ui/Button";
 
 const yearOptions = ["1 Year", "2 Years", "3 Years", "4 Years", "5 Years", "6 Years", "7 Years", "8 Years", "9 Years", "10 Years+"];
 
+import { useProviderOnboardingStore } from "@/store/useProviderOnboardingStore";
+
 export default function ProviderOnboardingStep5Page() {
   const router = useRouter();
-  const [businessName, setBusinessName] = useState("");
-  const [bio, setBio] = useState("");
-  const [serviceYears, setServiceYears] = useState<string | null>(null);
+  const store = useProviderOnboardingStore();
+  const [businessName, setBusinessName] = useState(store.businessName);
+  const [bio, setBio] = useState(store.bio);
+  const [serviceYears, setServiceYears] = useState<string | null>(store.serviceYears);
   const [yearsExpanded, setYearsExpanded] = useState(true);
-  const [, setCertification] = useState<File | null>(null);
+  const [certification, setCertification] = useState<File | null>(store.certification);
 
   const isValid = businessName.trim() !== "" && serviceYears !== null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!isValid) return;
-    // TODO: wire up to the real provider-onboarding API once available.
+    store.setCustomizationStep5({
+      businessName,
+      bio,
+      serviceYears,
+      certification,
+    });
     router.push("/provider-onboarding/step-6");
   };
 

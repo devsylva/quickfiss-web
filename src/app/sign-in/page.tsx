@@ -8,23 +8,42 @@ import { Button } from "@/components/ui/Button";
 import { AppleIcon, GoogleIcon } from "@/components/icons";
 import { isValidEmail } from "@/lib/validation";
 
+import { useRouter } from "next/navigation";
+import { authApi } from "@/lib/api/auth";
+import { useAuthStore } from "@/store/useAuthStore";
+
 export default function SignInPage() {
+  const router = useRouter();
+  const setAuth = useAuthStore((s) => s.setAuth);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [touched, setTouched] = useState({ email: false, password: false });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
 
   const markTouched = (field: keyof typeof touched) => () => setTouched((t) => ({ ...t, [field]: true }));
 
   const emailError = !isValidEmail(email) ? "Please enter valid email address" : undefined;
   const isValid = isValidEmail(email) && password.length > 0;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setTouched({ email: true, password: true });
-    if (!isValid) return;
+    if (!isValid || isSubmitting) return;
+
     setIsSubmitting(true);
-    // TODO: wire up to the real auth API once available.
+    setApiError(null);
+
+    try {
+      const response = await authApi.login({ email, password });
+      setAuth(response);
+      router.push("/dashboard");
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : "Invalid email or password. Please try again.";
+      setApiError(errorMsg);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -32,6 +51,12 @@ export default function SignInPage() {
       <form onSubmit={handleSubmit}>
         <h1 className="text-2xl font-extrabold text-primary">Login to your account</h1>
         <p className="mt-1 text-sm font-medium text-primary/70">Great to see you again. 👋</p>
+
+        {apiError && (
+          <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-medium text-red-700">
+            {apiError}
+          </div>
+        )}
 
         <div className="mt-8 flex flex-col gap-5">
           <Input

@@ -7,18 +7,26 @@ import { Input } from "@/components/ui/Input";
 import { FileInputRow } from "@/components/ui/FileInputRow";
 import { Button } from "@/components/ui/Button";
 
+import { useProviderOnboardingStore } from "@/store/useProviderOnboardingStore";
+
 export default function ProviderOnboardingStep2Page() {
   const router = useRouter();
-  const [address, setAddress] = useState("");
-  const [landmark, setLandmark] = useState("");
-  const [proofFile, setProofFile] = useState<File | null>(null);
+  const store = useProviderOnboardingStore();
 
-  const isValid = address.trim() !== "" && proofFile !== null;
+  const [address, setAddress] = useState(store.address);
+  const [landmark, setLandmark] = useState(store.landmark);
+  const [proofFile, setProofFile] = useState<File | null>(store.proofOfAddress);
+
+  const isValid = address.trim() !== "";
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!isValid) return;
-    // TODO: wire up to the real provider-onboarding API once available.
+    store.setKycStep2({
+      address,
+      landmark,
+      proofOfAddress: proofFile,
+    });
     router.push("/provider-onboarding/step-3");
   };
 

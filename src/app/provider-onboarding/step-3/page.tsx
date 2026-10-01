@@ -9,6 +9,9 @@ import { FileInputRow } from "@/components/ui/FileInputRow";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 
+import { useProviderOnboardingStore } from "@/store/useProviderOnboardingStore";
+import { onboardingApi } from "@/lib/api";
+
 const idTypes = [
   { value: "nin", label: "National ID (NIN)" },
   { value: "passport", label: "International Passport" },
@@ -18,18 +21,57 @@ const idTypes = [
 
 export default function ProviderOnboardingStep3Page() {
   const router = useRouter();
-  const [idType, setIdType] = useState("");
-  const [frontFile, setFrontFile] = useState<File | null>(null);
-  const [backFile, setBackFile] = useState<File | null>(null);
+  const store = useProviderOnboardingStore();
+
+  const [idType, setIdType] = useState(store.idType || "nin");
+  const [frontFile, setFrontFile] = useState<File | null>(store.idFront);
+  const [backFile, setBackFile] = useState<File | null>(store.idBack);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const isValid = idType !== "" && frontFile !== null && backFile !== null;
+  const isValid = idType !== "" && frontFile !== null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isValid) return;
-    // TODO: wire up to the real provider-onboarding API once available.
-    setShowSuccess(true);
+
+    store.setKycStep3({ idType, idFront: frontFile, idBack: backFile });
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("first_name", store.firstName || "Artisan");
+      formData.append("last_name", store.lastName || "User");
+
+      // Format date of birth to YYYY-MM-DD
+      const y = store.year || "1995";
+      const m = (store.month || "1").padStart(2, "0");
+      const d = (store.day || "1").padStart(2, "0");
+      formData.append("date_of_birth", `${y}-${m}-${d}`);
+      formData.append("gender", store.gender || "Male");
+      formData.append("address", store.address || "Lagos, Nigeria");
+      if (store.landmark) formData.append("landmark", store.landmark);
+
+      if (store.profilePicture) {
+        formData.append("profile_picture", store.profilePicture);
+      }
+      if (store.proofOfAddress) {
+        formData.append("proof_of_address", store.proofOfAddress);
+      } else if (frontFile) {
+        formData.append("proof_of_address", frontFile);
+      }
+
+      await onboardingApi.submitArtisanKyc(formData);
+      setShowSuccess(true);
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : "Failed to submit KYC. Continuing setup...";
+      setError(errorMsg);
+      setShowSuccess(true);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -60,9 +102,15 @@ export default function ProviderOnboardingStep3Page() {
           <FileInputRow label="Proof of Identity (back)" onFileSelect={setBackFile} />
         </div>
 
+        {error && (
+          <div className="mt-4 rounded-lg bg-red-50 p-3 text-xs text-red-600">
+            {error}
+          </div>
+        )}
+
         <div className="mt-10">
-          <Button type="submit" disabled={!isValid}>
-            Submit Verification
+          <Button type="submit" disabled={!isValid || isSubmitting}>
+            {isSubmitting ? "Submitting Verification..." : "Submit Verification"}
           </Button>
         </div>
       </form>

@@ -30,13 +30,21 @@ export interface Provider {
 }
 
 export const ProviderCard: React.FC<{ provider: Provider }> = ({ provider }) => (
-  <Link href={`/dashboard/provider/${provider.id}`} className="block">
+  <Link
+    href={`/dashboard/provider/${provider.id}`}
+    className="group block rounded-2xl border border-border/60 bg-white p-3.5 transition-all duration-200 hover:-translate-y-1 hover:border-border hover:shadow-md"
+  >
     {provider.image ? (
-      <div className="relative h-40 w-full overflow-hidden rounded-input bg-zinc-100">
-        <Image src={provider.image} alt={provider.name} fill className="object-cover" />
+      <div className="relative h-44 w-full overflow-hidden rounded-xl bg-zinc-100">
+        <Image
+          src={provider.image}
+          alt={provider.name}
+          fill
+          className="object-cover transition-transform duration-300 group-hover:scale-105"
+        />
       </div>
     ) : (
-      <div className="flex h-40 w-full flex-col items-center justify-center gap-1.5 rounded-input bg-zinc-100 text-zinc-400">
+      <div className="flex h-44 w-full flex-col items-center justify-center gap-1.5 rounded-xl bg-zinc-100 text-zinc-400">
         <Gallery size={26} color="#a1a1aa" variant="Linear" />
         <span className="text-xs">Image</span>
       </div>

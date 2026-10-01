@@ -60,8 +60,8 @@ export function ProviderDetailContent({ provider }: { provider: Provider }) {
       </div>
 
       <div className="flex flex-1 flex-col overflow-hidden">
-        <div className="flex-1 overflow-y-auto px-6 py-6 lg:px-10 lg:py-8">
-          <div className="lg:max-w-xl">
+        <div className="flex-1 overflow-y-auto px-6 py-6 lg:px-12 lg:py-8">
+          <div className="lg:max-w-2xl lg:mx-auto">
             <div className="flex items-center gap-3 rounded-card bg-primary-light p-4">
               <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-white text-lg font-bold text-primary">
                 {provider.name.charAt(0)}
@@ -200,12 +200,17 @@ export function ProviderDetailContent({ provider }: { provider: Provider }) {
           </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-4 border-t border-border px-6 py-4 lg:px-10">
-          <button type="button" className="text-sm font-semibold text-primary">
-            Message
-          </button>
-          <div className="flex-1">
-            <Button onClick={() => router.push(`/dashboard/booking/${provider.id}/step-1`)}>Request Service</Button>
+        <div className="shrink-0 border-t border-border bg-white px-6 py-4 lg:px-12">
+          <div className="flex items-center gap-4 lg:max-w-2xl lg:mx-auto">
+            <button
+              type="button"
+              className="rounded-input border border-border px-5 py-3 text-sm font-semibold text-primary transition-colors hover:bg-zinc-50"
+            >
+              Message
+            </button>
+            <div className="flex-1">
+              <Button onClick={() => router.push(`/dashboard/booking/${provider.id}/step-1`)}>Request Service</Button>
+            </div>
           </div>
         </div>
       </div>
