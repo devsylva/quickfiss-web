@@ -84,6 +84,17 @@ export interface ResetPasswordPayload {
 
 // ==================== ONBOARDING & KYC ====================
 
+export interface ClientProfilePayload {
+  first_name?: string;
+  last_name?: string;
+  phone_number?: string;
+  address?: string;
+  location?: string; // free text or "lat,lng"
+  date_of_birth?: string; // YYYY-MM-DD
+  preferred_categories?: string[]; // backend category names, e.g. "Cleaning and Waste"
+  profile_picture?: File | null;
+}
+
 export interface ArtisanKycPayload {
   first_name: string;
   last_name: string;

@@ -1,5 +1,9 @@
 import { apiClient } from "./client";
-import type { ArtisanKycPayload, ArtisanCustomizationPayload } from "@/types/api";
+import type {
+  ArtisanKycPayload,
+  ArtisanCustomizationPayload,
+  ClientProfilePayload,
+} from "@/types/api";
 
 export const onboardingApi = {
   /**
@@ -8,6 +12,33 @@ export const onboardingApi = {
   getClientOnboarding: () => {
     return apiClient("/api/client/profile/", {
       method: "GET",
+      requiresAuth: true,
+    });
+  },
+
+  /**
+   * Create or update the signed-in customer's profile. Every field is optional,
+   * so each onboarding step can save just its own part.
+   */
+  saveClientProfile: (payload: ClientProfilePayload) => {
+    const { profile_picture, preferred_categories, ...fields } = payload;
+
+    let body: FormData | Record<string, unknown>;
+    if (profile_picture) {
+      const form = new FormData();
+      Object.entries(fields).forEach(([key, value]) => {
+        if (value !== undefined) form.append(key, String(value));
+      });
+      preferred_categories?.forEach((name) => form.append("preferred_categories", name));
+      form.append("profile_picture", profile_picture);
+      body = form;
+    } else {
+      body = { ...fields, ...(preferred_categories ? { preferred_categories } : {}) };
+    }
+
+    return apiClient("/api/client/onboarding/", {
+      method: "POST",
+      body,
       requiresAuth: true,
     });
   },

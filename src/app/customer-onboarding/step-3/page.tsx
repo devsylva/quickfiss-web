@@ -7,6 +7,9 @@ import { ChevronLeftIcon } from "@/components/icons";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
+import { FormError } from "@/components/ui/FormError";
+import { onboardingApi } from "@/lib/api/onboarding";
+import { ApiError } from "@/lib/api/client";
 
 function LocationPin() {
   return (
@@ -23,26 +26,49 @@ function CustomerOnboardingStep3Content() {
   const name = useSearchParams().get("name") ?? "";
   const [address, setAddress] = useState("");
   const [showLocationPrompt, setShowLocationPrompt] = useState(true);
+  const [coordinates, setCoordinates] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<{ text: string; signIn: boolean } | null>(null);
 
   const handleEnableLocation = () => {
     setShowLocationPrompt(false);
     if (typeof navigator !== "undefined" && navigator.geolocation) {
-      // Permission only — no reverse-geocoding API wired up yet, so the
-      // address field still needs to be filled in manually below.
+      // No reverse-geocoding API is wired up yet, so the address field still needs
+      // to be filled in manually; the coordinates are saved alongside it.
       navigator.geolocation.getCurrentPosition(
-        () => {},
+        (position) =>
+          setCoordinates(`${position.coords.latitude.toFixed(5)},${position.coords.longitude.toFixed(5)}`),
         () => {},
       );
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (address.trim() === "") return;
-    // TODO: wire up to the real customer-onboarding API once available.
-    const params = new URLSearchParams({ address });
-    if (name) params.set("name", name);
-    router.push(`/dashboard?${params.toString()}`);
+    if (address.trim() === "" || isSubmitting) return;
+
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      await onboardingApi.saveClientProfile({
+        address: address.trim(),
+        ...(coordinates ? { location: coordinates } : {}),
+      });
+      const params = new URLSearchParams({ address: address.trim() });
+      if (name) params.set("name", name);
+      router.push(`/dashboard?${params.toString()}`);
+    } catch (err: unknown) {
+      if (err instanceof ApiError && err.status === 401) {
+        setError({ text: "Your session has expired. Please sign in to continue.", signIn: true });
+      } else {
+        setError({
+          text: err instanceof Error ? err.message : "Could not save your address. Please try again.",
+          signIn: false,
+        });
+      }
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -88,8 +114,10 @@ function CustomerOnboardingStep3Content() {
             />
           </div>
 
+          <FormError message={error?.text ?? null} signIn={error?.signIn} />
+
           <div className="mt-6">
-            <Button type="submit" disabled={address.trim() === ""}>
+            <Button type="submit" disabled={address.trim() === ""} isLoading={isSubmitting}>
               Continue
             </Button>
           </div>

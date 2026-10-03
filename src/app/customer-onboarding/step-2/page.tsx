@@ -8,20 +8,73 @@ import { Input } from "@/components/ui/Input";
 import { FileUploadBox } from "@/components/ui/FileUploadBox";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
+import { FormError } from "@/components/ui/FormError";
+import { onboardingApi } from "@/lib/api/onboarding";
+import { ApiError } from "@/lib/api/client";
+
+const MAX_PICTURE_BYTES = 4 * 1024 * 1024;
+const ALLOWED_PICTURE_TYPES = ["image/jpeg", "image/png"];
 
 export default function CustomerOnboardingStep2Page() {
   const router = useRouter();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [picture, setPicture] = useState<File | null>(null);
+  // Remounting the upload box clears its preview when a file is rejected.
+  const [uploadKey, setUploadKey] = useState(0);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<{ text: string; signIn: boolean } | null>(null);
 
   const isValid = firstName.trim() !== "" && lastName.trim() !== "";
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handlePictureSelect = (file: File | null) => {
+    setError(null);
+    if (!file) {
+      setPicture(null);
+      return;
+    }
+    if (!ALLOWED_PICTURE_TYPES.includes(file.type)) {
+      setPicture(null);
+      setUploadKey((k) => k + 1);
+      setError({ text: "Please choose a JPG or PNG image.", signIn: false });
+      return;
+    }
+    if (file.size > MAX_PICTURE_BYTES) {
+      setPicture(null);
+      setUploadKey((k) => k + 1);
+      setError({ text: "That image is larger than 4MB. Please choose a smaller one.", signIn: false });
+      return;
+    }
+    setPicture(file);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isValid) return;
-    // TODO: wire up to the real customer-onboarding API once available.
-    setShowSuccess(true);
+    if (!isValid || isSubmitting) return;
+
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      await onboardingApi.saveClientProfile({
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        profile_picture: picture,
+      });
+      setShowSuccess(true);
+    } catch (err: unknown) {
+      if (err instanceof ApiError && err.status === 401) {
+        setError({ text: "Your session has expired. Please sign in to continue.", signIn: true });
+      } else {
+        setError({
+          text: err instanceof Error ? err.message : "Could not save your details. Please try again.",
+          signIn: false,
+        });
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -42,12 +95,18 @@ export default function CustomerOnboardingStep2Page() {
 
           <div>
             <p className="mb-2 text-sm font-semibold text-foreground">Profile Picture</p>
-            <FileUploadBox helperText="JPG and PNG files supported. Max size 4MB." />
+            <FileUploadBox
+              key={uploadKey}
+              helperText="JPG and PNG files supported. Max size 4MB."
+              onFileSelect={handlePictureSelect}
+            />
           </div>
         </div>
 
+        <FormError message={error?.text ?? null} signIn={error?.signIn} />
+
         <div className="mt-8">
-          <Button type="submit" disabled={!isValid}>
+          <Button type="submit" disabled={!isValid} isLoading={isSubmitting}>
             Submit
           </Button>
         </div>
