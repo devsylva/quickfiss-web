@@ -10,6 +10,12 @@ import { walletApi } from "@/lib/api/wallet";
 import { useAuthStore } from "@/store/useAuthStore";
 import type { Wallet, WalletTransaction } from "@/types/api";
 
+function isCredit(tx: WalletTransaction) {
+  if (tx.transaction_type === "deposit" || tx.transaction_type === "refund") return true;
+  if (tx.transaction_type === "transfer") return tx.description.startsWith("Transfer from");
+  return false;
+}
+
 export default function WalletPage() {
   const { user, initAuth } = useAuthStore();
   const [wallet, setWallet] = useState<Wallet | null>(null);
@@ -160,8 +166,8 @@ export default function WalletPage() {
                     <p className="text-sm font-semibold text-foreground">{tx.description || tx.transaction_type}</p>
                     <p className="text-xs text-muted">{tx.created_at}</p>
                   </div>
-                  <span className={`text-sm font-bold ${tx.transaction_type === "credit" ? "text-emerald-600" : "text-foreground"}`}>
-                    {tx.transaction_type === "credit" ? "+" : "-"}₦{parseFloat(tx.amount).toLocaleString()}
+                  <span className={`text-sm font-bold ${isCredit(tx) ? "text-emerald-600" : "text-foreground"}`}>
+                    {isCredit(tx) ? "+" : "-"}₦{parseFloat(tx.amount).toLocaleString()}
                   </span>
                 </div>
               ))}

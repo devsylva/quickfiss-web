@@ -42,6 +42,7 @@ export interface RefreshTokenPayload {
 
 export interface RefreshTokenResponse {
   access: string;
+  refresh?: string;
 }
 
 export interface VerifyOtpPayload {
@@ -245,7 +246,7 @@ export interface WalletTransaction {
   user: number;
   user_email: string;
   amount: string;
-  transaction_type: "credit" | "debit";
+  transaction_type: "deposit" | "withdrawal" | "transfer" | "payment" | "refund";
   status: string;
   description: string;
   paystack_reference: string | null;

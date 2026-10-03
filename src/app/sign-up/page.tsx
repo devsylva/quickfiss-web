@@ -44,8 +44,12 @@ export default function SignUpPage() {
         password2: confirmPassword,
       });
 
-      const userRecord = response as unknown as Record<string, unknown> | null;
-      const userId = userRecord?.id || userRecord?.user_id || "";
+      const userRecord = response as unknown as {
+        id?: string | number;
+        user_id?: string | number;
+        user?: { id?: string | number };
+      } | null;
+      const userId = userRecord?.user?.id || userRecord?.id || userRecord?.user_id || "";
       const params = new URLSearchParams({
         email,
         next: "/get-started",

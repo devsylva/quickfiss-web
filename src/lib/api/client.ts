@@ -102,8 +102,17 @@ export async function apiClient<T = unknown>(
             const newAccessToken =
               refreshData?.data?.access || refreshData?.access;
 
+            const newRefreshToken =
+              refreshData?.data?.refresh || refreshData?.refresh;
+
             if (newAccessToken) {
-              useAuthStore.getState().setAccessToken(newAccessToken);
+              if (newRefreshToken) {
+                useAuthStore
+                  .getState()
+                  .setAuth({ access: newAccessToken, refresh: newRefreshToken });
+              } else {
+                useAuthStore.getState().setAccessToken(newAccessToken);
+              }
               isRefreshing = false;
               onTokenRefreshed(newAccessToken);
 
@@ -168,7 +177,13 @@ async function handleResponse<T>(response: Response): Promise<T> {
     let errorMessage = "An error occurred";
     if (payload) {
       if (typeof payload === "string") {
-        errorMessage = payload;
+        const looksLikeHtml = /^\s*<(!doctype|html)/i.test(payload);
+        errorMessage =
+          looksLikeHtml || payload.length > 300
+            ? response.status === 404
+              ? "Service endpoint not found. Please try again later."
+              : "Something went wrong on our end. Please try again."
+            : payload;
       } else if (typeof payload === "object" && payload !== null) {
         const obj = payload as Record<string, unknown>;
         if (typeof obj.message === "string") {

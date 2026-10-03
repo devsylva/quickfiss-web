@@ -6,7 +6,7 @@ export const onboardingApi = {
    * Client onboarding view
    */
   getClientOnboarding: () => {
-    return apiClient("/api/client/onboarding/", {
+    return apiClient("/api/client/profile/", {
       method: "GET",
       requiresAuth: true,
     });

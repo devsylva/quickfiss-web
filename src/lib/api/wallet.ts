@@ -33,10 +33,10 @@ export const walletApi = {
   },
 
   /**
-   * Get a specific wallet by ID
+   * Get a wallet by its owner's user id
    */
-  getWalletById: (walletId: string | number) => {
-    return apiClient<Wallet>(`/api/billings/wallet/${walletId}/`, {
+  getWalletByUserId: (userId: string | number) => {
+    return apiClient<Wallet>(`/api/billings/wallet/${userId}/`, {
       method: "GET",
       requiresAuth: true,
     });
@@ -61,8 +61,8 @@ export const walletApi = {
   /**
    * Update wallet currency or active status
    */
-  updateWallet: (walletId: string | number, data: { currency?: string; is_active?: boolean }) => {
-    return apiClient<Wallet>(`/api/billings/wallet/${walletId}/update/`, {
+  updateWallet: (userId: string | number, data: { currency?: string; is_active?: boolean }) => {
+    return apiClient<Wallet>(`/api/billings/wallet/${userId}/update/`, {
       method: "PUT",
       body: data,
       requiresAuth: true,
@@ -72,9 +72,9 @@ export const walletApi = {
   /**
    * Add funds to a wallet (manual/internal)
    */
-  fundWallet: (walletId: string | number, data: { amount: number; description?: string }) => {
+  fundWallet: (userId: string | number, data: { amount: number; description?: string }) => {
     return apiClient<{ wallet: Wallet; transaction_id: string }>(
-      `/api/billings/wallet/${walletId}/fund/`,
+      `/api/billings/wallet/${userId}/fund/`,
       {
         method: "POST",
         body: data,
@@ -95,10 +95,24 @@ export const walletApi = {
   },
 
   /**
-   * Get wallet transaction history
+   * Paginated transaction history for the logged-in user's own wallet
    */
-  getTransactionHistory: (transactionId: string | number) => {
-    return apiClient<WalletTransaction[]>(`/api/billings/transactions/${transactionId}/`, {
+  getMyTransactions: (params: { page?: number; limit?: number } = {}) => {
+    const qs = new URLSearchParams();
+    if (params.page) qs.set("page", String(params.page));
+    if (params.limit) qs.set("limit", String(params.limit));
+    const query = qs.toString();
+    return apiClient<WalletTransaction[]>(
+      `/api/billings/transactions/${query ? `?${query}` : ""}`,
+      { method: "GET", requiresAuth: true }
+    );
+  },
+
+  /**
+   * Transaction history for a given user id
+   */
+  getTransactionHistory: (userId: string | number) => {
+    return apiClient<WalletTransaction[]>(`/api/billings/transactions/${userId}/`, {
       method: "GET",
       requiresAuth: true,
     });
@@ -107,8 +121,8 @@ export const walletApi = {
   /**
    * Activate a deactivated wallet
    */
-  activateWallet: (walletId: string | number) => {
-    return apiClient<Wallet>(`/api/billings/wallet/${walletId}/activate/`, {
+  activateWallet: (userId: string | number) => {
+    return apiClient<Wallet>(`/api/billings/wallet/${userId}/activate/`, {
       method: "POST",
       requiresAuth: true,
     });
@@ -117,8 +131,8 @@ export const walletApi = {
   /**
    * Soft-delete (deactivate) a wallet
    */
-  deactivateWallet: (walletId: string | number) => {
-    return apiClient<Wallet>(`/api/billings/wallet/${walletId}/delete/`, {
+  deactivateWallet: (userId: string | number) => {
+    return apiClient<Wallet>(`/api/billings/wallet/${userId}/delete/`, {
       method: "DELETE",
       requiresAuth: true,
     });

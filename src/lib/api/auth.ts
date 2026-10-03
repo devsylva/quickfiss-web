@@ -1,4 +1,5 @@
 import { apiClient } from "./client";
+import { getStoredRefreshToken } from "@/store/useAuthStore";
 import type {
   RegisterPayload,
   LoginPayload,
@@ -48,7 +49,7 @@ export const authApi = {
    * Verify OTP sent to user's email after registration
    */
   verifyOtp: (payload: VerifyOtpPayload) => {
-    return apiClient<{ message?: string }>("/api/otp/verify/", {
+    return apiClient<{ message?: string }>("/api/verify-otp/", {
       method: "POST",
       body: payload,
       requiresAuth: false,
@@ -72,6 +73,7 @@ export const authApi = {
   logout: () => {
     return apiClient<{ success: boolean; message: string }>("/api/logout/", {
       method: "POST",
+      body: { refresh: getStoredRefreshToken() },
       requiresAuth: true,
     });
   },
