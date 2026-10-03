@@ -2,6 +2,9 @@ import { apiClient } from "./client";
 import { getStoredRefreshToken } from "@/store/useAuthStore";
 import type {
   RegisterPayload,
+  RegisterResponse,
+  SetUserTypePayload,
+  SetUserTypeResponse,
   LoginPayload,
   AuthTokens,
   RefreshTokenPayload,
@@ -10,7 +13,6 @@ import type {
   ResendOtpPayload,
   ForgotPasswordPayload,
   ResetPasswordPayload,
-  User,
 } from "@/types/api";
 
 export const authApi = {
@@ -18,7 +20,7 @@ export const authApi = {
    * Register a new client or artisan
    */
   register: (payload: RegisterPayload) => {
-    return apiClient<User>("/api/register/", {
+    return apiClient<RegisterResponse>("/api/register/", {
       method: "POST",
       body: payload,
       requiresAuth: false,
@@ -66,6 +68,17 @@ export const authApi = {
       method: "POST",
       body: payload,
       requiresAuth: false,
+    });
+  },
+
+  /**
+   * Mark the signed-in account as a customer or a provider (artisan)
+   */
+  setUserType: (payload: SetUserTypePayload) => {
+    return apiClient<SetUserTypeResponse>("/api/user/set-type/", {
+      method: "POST",
+      body: payload,
+      requiresAuth: true,
     });
   },
 

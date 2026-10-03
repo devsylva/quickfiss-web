@@ -10,6 +10,8 @@ import { AppleIcon, GoogleIcon } from "@/components/icons";
 import { isValidEmail } from "@/lib/validation";
 
 import { authApi } from "@/lib/api/auth";
+import { useAuthStore } from "@/store/useAuthStore";
+import { useProviderOnboardingStore } from "@/store/useProviderOnboardingStore";
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -44,17 +46,22 @@ export default function SignUpPage() {
         password2: confirmPassword,
       });
 
-      const userRecord = response as unknown as {
-        id?: string | number;
-        user_id?: string | number;
-        user?: { id?: string | number };
-      } | null;
-      const userId = userRecord?.user?.id || userRecord?.id || userRecord?.user_id || "";
+      // A brand-new account starts onboarding from a clean slate.
+      useProviderOnboardingStore.getState().resetOnboarding();
+
+      // Keep the session the backend issues at sign-up so onboarding calls
+      // (account type, provider KYC) are authenticated.
+      useAuthStore.getState().setAuth({
+        access: response.access,
+        refresh: response.refresh,
+        user: response.user,
+      });
+
       const params = new URLSearchParams({
         email,
         next: "/get-started",
+        userId: String(response.user.id),
       });
-      if (userId) params.set("userId", String(userId));
 
       router.push(`/verify-otp?${params.toString()}`);
     } catch (err: unknown) {

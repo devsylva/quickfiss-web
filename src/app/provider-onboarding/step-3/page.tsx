@@ -37,38 +37,46 @@ export default function ProviderOnboardingStep3Page() {
     if (!isValid) return;
 
     store.setKycStep3({ idType, idFront: frontFile, idBack: backFile });
-    setIsSubmitting(true);
     setError(null);
+
+    // Steps 1-2 live in memory only, so a page refresh loses them.
+    if (
+      !store.firstName ||
+      !store.lastName ||
+      !store.day ||
+      !store.month ||
+      !store.year ||
+      !store.gender ||
+      !store.address
+    ) {
+      setError("Some details from the earlier steps are missing. Please go back to step 1 and fill them in again.");
+      return;
+    }
+
+    setIsSubmitting(true);
 
     try {
       const formData = new FormData();
-      formData.append("first_name", store.firstName || "Artisan");
-      formData.append("last_name", store.lastName || "User");
-
-      // Format date of birth to YYYY-MM-DD
-      const y = store.year || "1995";
-      const m = (store.month || "1").padStart(2, "0");
-      const d = (store.day || "1").padStart(2, "0");
-      formData.append("date_of_birth", `${y}-${m}-${d}`);
-      formData.append("gender", store.gender || "Male");
-      formData.append("address", store.address || "Lagos, Nigeria");
+      formData.append("first_name", store.firstName);
+      formData.append("last_name", store.lastName);
+      formData.append(
+        "date_of_birth",
+        `${store.year}-${store.month.padStart(2, "0")}-${store.day.padStart(2, "0")}`
+      );
+      formData.append("gender", store.gender);
+      formData.append("address", store.address);
       if (store.landmark) formData.append("landmark", store.landmark);
+      if (store.profilePicture) formData.append("profile_picture", store.profilePicture);
+      if (store.proofOfAddress) formData.append("proof_of_address", store.proofOfAddress);
 
-      if (store.profilePicture) {
-        formData.append("profile_picture", store.profilePicture);
-      }
-      if (store.proofOfAddress) {
-        formData.append("proof_of_address", store.proofOfAddress);
-      } else if (frontFile) {
-        formData.append("proof_of_address", frontFile);
-      }
+      formData.append("id_type", idType);
+      if (frontFile) formData.append("id_front", frontFile);
+      if (backFile) formData.append("id_back", backFile);
 
       await onboardingApi.submitArtisanKyc(formData);
       setShowSuccess(true);
     } catch (err: unknown) {
-      const errorMsg = err instanceof Error ? err.message : "Failed to submit KYC. Continuing setup...";
-      setError(errorMsg);
-      setShowSuccess(true);
+      setError(err instanceof Error ? err.message : "Failed to submit your details. Please try again.");
     } finally {
       setIsSubmitting(false);
     }

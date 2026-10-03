@@ -8,11 +8,11 @@ import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
 
 const languageOptions = [
-  { value: "english", label: "English" },
-  { value: "pidgin", label: "Pidgin" },
-  { value: "igbo", label: "Igbo" },
-  { value: "hausa", label: "Hausa" },
-  { value: "yoruba", label: "Yoruba" },
+  { value: "English", label: "English" },
+  { value: "Pidgin", label: "Pidgin" },
+  { value: "Igbo", label: "Igbo" },
+  { value: "Hausa", label: "Hausa" },
+  { value: "Yoruba", label: "Yoruba" },
 ];
 
 import { useProviderOnboardingStore } from "@/store/useProviderOnboardingStore";

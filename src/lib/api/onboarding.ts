@@ -38,6 +38,15 @@ export const onboardingApi = {
       if (p.proof_of_address) {
         body.append("proof_of_address", p.proof_of_address);
       }
+      if (p.id_type) {
+        body.append("id_type", p.id_type);
+      }
+      if (p.id_front) {
+        body.append("id_front", p.id_front);
+      }
+      if (p.id_back) {
+        body.append("id_back", p.id_back);
+      }
     }
 
     return apiClient("/api/artisan/kyc/", {
@@ -71,8 +80,8 @@ export const onboardingApi = {
       if (p.bio) {
         body.append("bio", p.bio);
       }
-      if (p.service_years) {
-        body.append("service_years", p.service_years);
+      if (p.experience) {
+        body.append("experience", p.experience);
       }
       if (p.language) {
         body.append("language", p.language);

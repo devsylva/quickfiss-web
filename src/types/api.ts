@@ -16,6 +16,23 @@ export interface RegisterPayload {
   password2: string;
 }
 
+export interface RegisterResponse {
+  message?: string;
+  user: { id: string | number; email: string };
+  access: string;
+  refresh: string;
+}
+
+export interface SetUserTypePayload {
+  user_type: "client" | "artisan";
+}
+
+export interface SetUserTypeResponse {
+  message: string;
+  is_client: boolean;
+  is_artisan: boolean;
+}
+
 export interface User {
   id: string | number;
   email: string;
@@ -76,6 +93,9 @@ export interface ArtisanKycPayload {
   landmark?: string;
   profile_picture?: File | null;
   proof_of_address?: File | null;
+  id_type?: string;
+  id_front?: File | null;
+  id_back?: File | null;
 }
 
 export interface ArtisanCustomizationPayload {
@@ -83,7 +103,7 @@ export interface ArtisanCustomizationPayload {
   business_name?: string;
   business_about?: string;
   bio?: string;
-  service_years?: string;
+  experience?: string; // "1" .. "10"
   language?: string;
   location?: string;
   availability?: string[];

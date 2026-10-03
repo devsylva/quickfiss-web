@@ -3,6 +3,7 @@
 import { create } from "zustand";
 import Cookies from "js-cookie";
 import type { User, AuthTokens } from "@/types/api";
+import { useProviderOnboardingStore } from "@/store/useProviderOnboardingStore";
 
 const ACCESS_TOKEN_KEY = "quickfiss_access_token";
 const REFRESH_TOKEN_KEY = "quickfiss_refresh_token";
@@ -14,10 +15,14 @@ interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  activeRole: "customer" | "provider";
+  isOnline: boolean;
 
   setAuth: (tokens: AuthTokens) => void;
   setAccessToken: (token: string) => void;
   setUser: (user: User) => void;
+  setActiveRole: (role: "customer" | "provider") => void;
+  setIsOnline: (online: boolean) => void;
   clearAuth: () => void;
   initAuth: () => void;
 }
@@ -28,6 +33,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   isAuthenticated: false,
   isLoading: true,
+  activeRole: "provider",
+  isOnline: true,
 
   setAuth: (tokens: AuthTokens) => {
     Cookies.set(ACCESS_TOKEN_KEY, tokens.access, { expires: 7, secure: process.env.NODE_ENV === "production" });
@@ -57,10 +64,27 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ user });
   },
 
+  setActiveRole: (role: "customer" | "provider") => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("quickfiss_active_role", role);
+    }
+    set({ activeRole: role });
+  },
+
+  setIsOnline: (online: boolean) => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("quickfiss_provider_online", online ? "1" : "0");
+    }
+    set({ isOnline: online });
+  },
+
   clearAuth: () => {
     Cookies.remove(ACCESS_TOKEN_KEY);
     Cookies.remove(REFRESH_TOKEN_KEY);
     Cookies.remove(USER_KEY);
+
+    // Saved onboarding answers (names, DOB, address, ID images) must not outlive the session.
+    useProviderOnboardingStore.getState().resetOnboarding();
 
     set({
       accessToken: null,
@@ -85,11 +109,31 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }
     }
 
+    let savedRole: "customer" | "provider" = "provider";
+    let savedOnline = true;
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("quickfiss_active_role");
+      if (stored === "customer" || stored === "provider") {
+        savedRole = stored;
+      } else if (parsedUser?.user_type === "client") {
+        savedRole = "customer";
+      } else {
+        savedRole = "provider";
+      }
+
+      const storedOnline = localStorage.getItem("quickfiss_provider_online");
+      if (storedOnline !== null) {
+        savedOnline = storedOnline === "1";
+      }
+    }
+
     set({
       accessToken: access,
       refreshToken: refresh,
       user: parsedUser,
       isAuthenticated: Boolean(access),
+      activeRole: savedRole,
+      isOnline: savedOnline,
       isLoading: false,
     });
   },

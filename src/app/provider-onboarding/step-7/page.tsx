@@ -15,9 +15,9 @@ import { useProviderOnboardingStore } from "@/store/useProviderOnboardingStore";
 import { onboardingApi } from "@/lib/api";
 
 const availabilityOptions = [
-  { value: "morning", label: "Morning" },
-  { value: "noon", label: "Noon" },
-  { value: "evening", label: "Evening" },
+  { value: "MORNING", label: "Morning" },
+  { value: "AFTERNOON", label: "Noon" },
+  { value: "NIGHT", label: "Evening" },
 ];
 
 const formatNaira = (v: number) => `₦${v.toLocaleString()}`;
@@ -40,17 +40,25 @@ export default function ProviderOnboardingStep7Page() {
     if (!isValid) return;
 
     store.setCustomizationStep7({ location, availability, priceRange });
-    setIsSubmitting(true);
     setError(null);
+
+    // The answers from steps 4-6 live in memory only, so a page refresh loses them.
+    const experience = store.serviceYears ? String(parseInt(store.serviceYears, 10)) : "";
+    if (store.services.length === 0 || !store.businessName || !experience || !store.language) {
+      setError("Some details from the earlier steps are missing. Please go back to step 4 and fill them in again.");
+      return;
+    }
+
+    setIsSubmitting(true);
 
     try {
       const formData = new FormData();
       store.services.forEach((s) => formData.append("services", s));
-      if (store.businessName) formData.append("business_name", store.businessName);
+      formData.append("business_name", store.businessName);
       if (store.bio) formData.append("bio", store.bio);
       if (store.businessAbout) formData.append("business_about", store.businessAbout);
-      if (store.serviceYears) formData.append("service_years", store.serviceYears);
-      if (store.language) formData.append("language", store.language);
+      formData.append("experience", experience);
+      formData.append("language", store.language);
       formData.append("location", location);
       availability.forEach((a) => formData.append("availability", a));
       formData.append("min_price", String(priceRange[0]));
@@ -61,9 +69,7 @@ export default function ProviderOnboardingStep7Page() {
       store.resetOnboarding();
       setShowSuccess(true);
     } catch (err: unknown) {
-      const errorMsg = err instanceof Error ? err.message : "Failed to submit customization. Continuing to dashboard...";
-      setError(errorMsg);
-      setShowSuccess(true);
+      setError(err instanceof Error ? err.message : "Failed to save your profile. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
