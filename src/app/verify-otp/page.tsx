@@ -8,6 +8,7 @@ import { OtpInput } from "@/components/ui/OtpInput";
 import { Button } from "@/components/ui/Button";
 
 import { authApi } from "@/lib/api/auth";
+import { RESET_OTP_STORAGE_KEY } from "@/lib/resetFlow";
 
 function VerifyOtpForm() {
   const router = useRouter();
@@ -15,6 +16,7 @@ function VerifyOtpForm() {
   const email = searchParams.get("email") ?? "";
   const userId = searchParams.get("userId") ?? email;
   const next = searchParams.get("next") ?? "/reset-password";
+  const isResetFlow = searchParams.get("flow") === "reset";
   const [digits, setDigits] = useState<string[]>(["", "", "", ""]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResending, setIsResending] = useState(false);
@@ -28,6 +30,19 @@ function VerifyOtpForm() {
 
     setIsSubmitting(true);
     setMessage(null);
+
+    // Password reset: the backend checks the code together with the new password
+    // in one request, so hold the code for the next step instead of verifying here.
+    if (isResetFlow) {
+      try {
+        sessionStorage.setItem(RESET_OTP_STORAGE_KEY, digits.join(""));
+      } catch {
+        // sessionStorage unavailable; the reset page will ask the user to start again
+      }
+      setIsSubmitting(false);
+      router.push(`${next}?email=${encodeURIComponent(email)}`);
+      return;
+    }
 
     try {
       await authApi.verifyOtp({
@@ -52,7 +67,11 @@ function VerifyOtpForm() {
     setMessage(null);
 
     try {
-      await authApi.resendOtp({ email });
+      if (isResetFlow) {
+        await authApi.forgotPassword({ email });
+      } else {
+        await authApi.resendOtp({ email });
+      }
       setMessage({
         text: "A new 4-digit code has been sent to your email address.",
         type: "success",

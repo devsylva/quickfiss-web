@@ -8,6 +8,8 @@ import type {
   RefreshTokenResponse,
   VerifyOtpPayload,
   ResendOtpPayload,
+  ForgotPasswordPayload,
+  ResetPasswordPayload,
   User,
 } from "@/types/api";
 
@@ -61,6 +63,28 @@ export const authApi = {
    */
   resendOtp: (payload: ResendOtpPayload) => {
     return apiClient<{ message?: string }>("/api/resend-otp/", {
+      method: "POST",
+      body: payload,
+      requiresAuth: false,
+    });
+  },
+
+  /**
+   * Request a password-reset code by email
+   */
+  forgotPassword: (payload: ForgotPasswordPayload) => {
+    return apiClient<null>("/api/password/forgot/", {
+      method: "POST",
+      body: payload,
+      requiresAuth: false,
+    });
+  },
+
+  /**
+   * Verify the reset code and set a new password
+   */
+  resetPassword: (payload: ResetPasswordPayload) => {
+    return apiClient<null>("/api/password/reset/", {
       method: "POST",
       body: payload,
       requiresAuth: false,

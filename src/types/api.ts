@@ -54,6 +54,17 @@ export interface ResendOtpPayload {
   email: string;
 }
 
+export interface ForgotPasswordPayload {
+  email: string;
+}
+
+export interface ResetPasswordPayload {
+  email: string;
+  otp: string;
+  password: string;
+  password2: string;
+}
+
 // ==================== ONBOARDING & KYC ====================
 
 export interface ArtisanKycPayload {

@@ -1,16 +1,23 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { TickCircle } from "iconsax-react";
 import { AuthLayout } from "@/components/layout/AuthLayout";
 import { BackButton } from "@/components/ui/BackButton";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
+import { authApi } from "@/lib/api/auth";
+import { RESET_OTP_STORAGE_KEY } from "@/lib/resetFlow";
 
-export default function ResetPasswordPage() {
+function ResetPasswordForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const email = searchParams.get("email") ?? "";
+  const codeHref = `/verify-otp?email=${encodeURIComponent(email)}&flow=reset&next=/reset-password`;
+  const [apiError, setApiError] = useState<{ text: string; badCode: boolean } | null>(null);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [touched, setTouched] = useState({ password: false, confirmPassword: false });
@@ -25,14 +32,44 @@ export default function ResetPasswordPage() {
 
   const isValid = password.length >= 8 && password === confirmPassword;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setTouched({ password: true, confirmPassword: true });
-    if (!isValid) return;
+    if (!isValid || isSubmitting) return;
+
+    let otp: string | null = null;
+    try {
+      otp = sessionStorage.getItem(RESET_OTP_STORAGE_KEY);
+    } catch {
+      otp = null;
+    }
+
+    if (!email || !otp) {
+      setApiError({
+        text: "Your reset session has expired. Please request a new code.",
+        badCode: false,
+      });
+      return;
+    }
+
     setIsSubmitting(true);
-    // TODO: wire up to the real auth API once available.
-    setIsSubmitting(false);
-    setShowSuccess(true);
+    setApiError(null);
+
+    try {
+      await authApi.resetPassword({ email, otp, password, password2: confirmPassword });
+      try {
+        sessionStorage.removeItem(RESET_OTP_STORAGE_KEY);
+      } catch {
+        // nothing to clean up
+      }
+      setShowSuccess(true);
+    } catch (err: unknown) {
+      const text =
+        err instanceof Error ? err.message : "Could not reset your password. Please try again.";
+      setApiError({ text, badCode: /otp/i.test(text) });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -44,6 +81,21 @@ export default function ResetPasswordPage() {
         <p className="mt-2 text-sm leading-relaxed text-muted">
           Set the new password for your account so you can login and access all the features.
         </p>
+
+        {apiError && (
+          <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-medium text-red-700">
+            {apiError.text}{" "}
+            {apiError.badCode ? (
+              <Link href={codeHref} className="font-semibold underline">
+                Enter the code again
+              </Link>
+            ) : (
+              <Link href="/forgot-password" className="font-semibold underline">
+                Start over
+              </Link>
+            )}
+          </div>
+        )}
 
         <div className="mt-8 flex flex-col gap-5">
           <Input
@@ -90,5 +142,13 @@ export default function ResetPasswordPage() {
         </div>
       </Modal>
     </AuthLayout>
+  );
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={null}>
+      <ResetPasswordForm />
+    </Suspense>
   );
 }
