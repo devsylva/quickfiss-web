@@ -1,5 +1,6 @@
 "use client";
 
+import { SaveButton } from "@/components/ui/SaveButton";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -121,6 +122,7 @@ export function ProviderDetailContent({ providerId }: { providerId: string }) {
           >
             <ChevronLeftIcon />
           </button>
+          <SaveButton providerId={provider.id} className="ml-auto mr-2 h-9 w-9 rounded-full bg-white/30 shadow backdrop-blur-md" />
           <button
             type="button"
             aria-label="Share"

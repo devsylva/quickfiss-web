@@ -46,6 +46,10 @@ export interface User {
   is_verified?: boolean;
   phone_number?: string;
   profile_picture?: string | null;
+  date_of_birth?: string | null;
+  country?: string;
+  state?: string;
+  address?: string;
   /** An account can be a customer, a provider, or both. */
   is_client?: boolean;
   is_artisan?: boolean;
@@ -64,6 +68,9 @@ export interface UpdateProfilePayload {
   last_name?: string;
   phone_number?: string;
   profile_picture?: File | null;
+  date_of_birth?: string | null;
+  country?: string;
+  state?: string;
 }
 
 export interface ChangePasswordPayload {
@@ -516,6 +523,13 @@ export interface ServiceArea {
 export interface MyProviderProfile {
   id: number;
   business_name: string;
+  bio?: string;
+  business_about?: string;
+  experience?: string;
+  language?: string;
+  services?: string[];
+  min_price?: string | null;
+  max_price?: string | null;
   kyc_status: ProviderStatus;
   kyc_rejection_reason: string;
   is_online: boolean;
@@ -526,4 +540,14 @@ export interface MyProviderProfile {
   profile_completeness: number;
   profile_missing: string[];
   availability_data?: { id: number; name: string }[];
+}
+
+export interface AppNotification {
+  id: number;
+  title: string;
+  body: string;
+  /** App path to open when tapped. */
+  link: string;
+  is_read: boolean;
+  created_at: string;
 }

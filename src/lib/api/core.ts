@@ -1,5 +1,5 @@
 import { apiClient } from "./client";
-import type { ApiCategory, ApiService, FeedItem, SearchArtisanItem } from "@/types/api";
+import type { AppNotification, ApiCategory, ApiService, FeedItem, SearchArtisanItem } from "@/types/api";
 
 export const coreApi = {
   /**
@@ -8,7 +8,7 @@ export const coreApi = {
   getCategories: () => {
     return apiClient<ApiCategory[]>("/api/categories/", {
       method: "GET",
-      requiresAuth: false,
+      requiresAuth: true,
     });
   },
 
@@ -18,7 +18,7 @@ export const coreApi = {
   getServices: () => {
     return apiClient<ApiService[]>("/api/services/", {
       method: "GET",
-      requiresAuth: false,
+      requiresAuth: true,
     });
   },
 
@@ -43,6 +43,31 @@ export const coreApi = {
   getFeed: () => {
     return apiClient<FeedItem[]>("/api/feed/", {
       method: "GET",
+      requiresAuth: true,
+    });
+  },
+
+  /** Public contact form. */
+  sendContact: (payload: { name: string; email: string; message: string }) => {
+    return apiClient<{ success: boolean }>("/api/contact/", {
+      method: "POST",
+      body: payload,
+      requiresAuth: false,
+    });
+  },
+
+  /** The signed-in user's notifications. */
+  getNotifications: () => {
+    return apiClient<{ unread: number; items: AppNotification[] }>("/api/notifications/", {
+      method: "GET",
+      requiresAuth: true,
+    });
+  },
+
+  /** Mark one notification read, or all of them when no id is given. */
+  markNotificationsRead: (id?: number) => {
+    return apiClient<{ success: boolean }>(id ? `/api/notifications/${id}/read/` : "/api/notifications/read/", {
+      method: "POST",
       requiresAuth: true,
     });
   },

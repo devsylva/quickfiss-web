@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
-import { Gallery, Heart, Location, Star1 } from "iconsax-react";
+import { Gallery, Location, Star1 } from "iconsax-react";
+import { SaveButton } from "@/components/ui/SaveButton";
 
 export interface Review {
   name: string;
@@ -62,7 +63,7 @@ export const ProviderCard: React.FC<{ provider: Provider }> = ({ provider }) => 
         </div>
         <span className="text-base font-semibold text-foreground">{provider.name}</span>
       </div>
-      <Heart size={20} color="#a1a1aa" variant="Linear" />
+      <SaveButton providerId={provider.id} />
     </div>
 
     <div className="mt-2 flex flex-wrap items-center gap-2">

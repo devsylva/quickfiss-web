@@ -7,7 +7,6 @@ import { useRouter } from "next/navigation";
 import {
   Location,
   Star1,
-  Notification,
   Briefcase,
   Routing,
   TickCircle,
@@ -123,15 +122,6 @@ export function ProviderDashboardHome() {
               {isOnline ? "Accepting Jobs" : "Offline"}
             </span>
           </div>
-
-          <button
-            type="button"
-            aria-label="Provider Notifications"
-            className="relative flex h-10 w-10 items-center justify-center rounded-full border border-border bg-white text-foreground transition-colors hover:bg-zinc-50"
-          >
-            <Notification size={20} color="#18181b" variant="Linear" />
-            {newRequests.length > 0 && <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-primary ring-2 ring-white" />}
-          </button>
         </div>
       </div>
 
@@ -231,7 +221,7 @@ export function ProviderDashboardHome() {
           <section>
             <h2 className="text-base font-extrabold text-foreground sm:text-lg">Quick Actions</h2>
             <div className="mt-4 grid grid-cols-4 gap-2 sm:gap-4">
-              <Link href="/dashboard/profile" className="group flex flex-col items-center text-center transition-transform hover:-translate-y-0.5">
+              <Link href="/dashboard/profile/business" className="group flex flex-col items-center text-center transition-transform hover:-translate-y-0.5">
                 <div className="relative flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-xs transition-shadow group-hover:shadow-md sm:h-16 sm:w-16">
                   <svg className="h-14 w-14 -rotate-90 transform sm:h-16 sm:w-16" viewBox="0 0 36 36">
                     <path className="text-zinc-100" strokeWidth="3" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
@@ -421,10 +411,10 @@ export function ProviderDashboardHome() {
             </div>
             <button
               type="button"
-              onClick={() => router.push("/dashboard/profile")}
+              onClick={() => router.push("/dashboard/profile/business")}
               className="mt-3 w-full rounded-xl border border-border py-2 text-center text-xs font-semibold text-foreground hover:bg-zinc-50"
             >
-              Adjust in profile
+              Edit business profile
             </button>
           </section>
         </div>

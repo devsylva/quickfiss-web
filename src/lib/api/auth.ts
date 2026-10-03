@@ -104,7 +104,7 @@ export const authApi = {
     if (profile_picture) {
       const form = new FormData();
       Object.entries(fields).forEach(([key, value]) => {
-        if (value !== undefined) form.append(key, String(value));
+        if (value !== undefined && value !== null) form.append(key, String(value));
       });
       form.append("profile_picture", profile_picture);
       body = form;

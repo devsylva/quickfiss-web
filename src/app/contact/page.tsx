@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Location, Call, Sms, Clock, TickCircle, MessageQuestion } from "iconsax-react";
 import { LandingNavbar } from "@/components/landing/LandingNavbar";
 import { LandingFooter } from "@/components/landing/LandingFooter";
+import { coreApi } from "@/lib/api/core";
 
 export default function ContactPage() {
   const [name, setName] = useState("");
@@ -12,17 +13,25 @@ export default function ContactPage() {
   const [subject, setSubject] = useState("General Support");
   const [message, setMessage] = useState("");
   const [sent, setSent] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !email || !message) return;
-    setSent(true);
-    setTimeout(() => {
+    if (!name || !email || !message || sending) return;
+    setSending(true);
+    setError(null);
+    try {
+      await coreApi.sendContact({ name, email, message: `[${subject}]\n\n${message}` });
+      setSent(true);
       setName("");
       setEmail("");
       setMessage("");
-      setSent(false);
-    }, 4500);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "We couldn't send your message. Please try again.");
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -193,11 +202,13 @@ export default function ContactPage() {
                         />
                       </div>
 
+                      {error && <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-medium text-red-700">{error}</p>}
                       <button
                         type="submit"
-                        className="mt-3 rounded-btn bg-primary py-4 text-sm font-bold text-white shadow-md shadow-primary/25 transition-all hover:bg-primary-dark active:scale-[0.98]"
+                        disabled={sending}
+                        className="mt-3 disabled:opacity-60 rounded-btn bg-primary py-4 text-sm font-bold text-white shadow-md shadow-primary/25 transition-all hover:bg-primary-dark active:scale-[0.98]"
                       >
-                        Send Message
+                        {sending ? "Sending..." : "Send Message"}
                       </button>
                     </form>
                   )}

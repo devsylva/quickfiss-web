@@ -62,4 +62,20 @@ export const artisansApi = {
       requiresAuth: true,
     });
   },
+
+  /** Providers the customer has bookmarked. */
+  saved: () => {
+    return apiClient<{ ids: number[]; data: ArtisanSummary[] }>("/api/saved-providers/", {
+      method: "GET",
+      requiresAuth: true,
+    });
+  },
+
+  save: (artisanId: number | string) => {
+    return apiClient<{ saved: boolean }>(`/api/saved-providers/${artisanId}/`, { method: "PUT", requiresAuth: true });
+  },
+
+  unsave: (artisanId: number | string) => {
+    return apiClient<{ saved: boolean }>(`/api/saved-providers/${artisanId}/`, { method: "DELETE", requiresAuth: true });
+  },
 };

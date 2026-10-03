@@ -138,6 +138,7 @@ export default function ProviderOnboardingStep7Page() {
             : "We check every provider's details before they can take jobs. We'll email you as soon as you're approved, usually within one business day."}
         </p>
         <div className="mt-6 flex flex-col gap-2.5">
+          <Button onClick={() => router.push("/dashboard/subscription")}>Select Subscription Plan</Button>
           <Button variant="secondary" onClick={() => router.push("/dashboard")}>Go to Dashboard</Button>
         </div>
       </Modal>

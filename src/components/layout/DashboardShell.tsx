@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Home2,
@@ -8,7 +8,6 @@ import {
   Wallet2,
   Sms,
   Profile,
-  Notification,
   Location,
   ArrowDown2,
   ArrowRight2,
@@ -16,6 +15,9 @@ import {
 } from "iconsax-react";
 
 import { useAuthStore } from "@/store/useAuthStore";
+import { CustomerLocationModal } from "@/components/layout/CustomerLocationModal";
+import { onboardingApi } from "@/lib/api/onboarding";
+import { NotificationBell } from "@/components/layout/NotificationBell";
 import { useRoleSwitcher } from "@/hooks/useRoleSwitcher";
 import { useProviderOnline } from "@/hooks/useProviderOnline";
 
@@ -38,6 +40,23 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({ children, addres
   const [expanded, setExpanded] = useState(false);
   const { activeRole } = useAuthStore();
   const switchRole = useRoleSwitcher();
+  const [myAddress, setMyAddress] = useState("");
+  const [locationOpen, setLocationOpen] = useState(false);
+
+  // The customer's saved address, shown in the header.
+  useEffect(() => {
+    if (activeRole !== "customer") return;
+    let cancelled = false;
+    onboardingApi
+      .getClientOnboarding()
+      .then((p) => {
+        if (!cancelled) setMyAddress(p?.address ?? "");
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [activeRole]);
   const { isOnline, setOnline } = useProviderOnline();
 
   const NavButton = ({
@@ -153,6 +172,23 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({ children, addres
             </div>
           )}
 
+          {/* Subscription plan shortcut for provider */}
+          {expanded && activeRole === "provider" && (
+            <div className="mb-2 px-2">
+              <button
+                type="button"
+                onClick={() => router.push("/dashboard/subscription")}
+                className="flex w-full items-center justify-between rounded-xl bg-[#e3f4e8] px-3 py-2 text-xs font-bold text-zinc-900 transition-colors hover:bg-emerald-100"
+              >
+                <span className="flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                  <span>Free Plan</span>
+                </span>
+                <span className="text-primary hover:underline">Upgrade</span>
+              </button>
+            </div>
+          )}
+
           <button
             type="button"
             onClick={() => router.push("/dashboard/profile")}
@@ -186,13 +222,15 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({ children, addres
             onClick={() => {
               if (activeRole === "provider") {
                 router.push("/dashboard/location");
+              } else {
+                setLocationOpen(true);
               }
             }}
             className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-zinc-100"
           >
             <Location size={18} color="#3d5afe" variant="Bold" />
             <span className="max-w-[140px] truncate sm:max-w-[240px] lg:max-w-[280px]">
-              {address || (activeRole === "provider" ? "Set your service area" : "Set your location")}
+              {address || (activeRole === "provider" ? "Set your service area" : myAddress || "Set your location")}
             </span>
             <ArrowDown2 size={14} color="#a1a1aa" />
           </button>
@@ -247,14 +285,7 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({ children, addres
               </div>
             )}
 
-            <button
-              type="button"
-              aria-label="Notifications"
-              className="relative flex h-9 w-9 items-center justify-center rounded-full text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-foreground"
-            >
-              <Notification size={19} color="#171717" variant="Linear" />
-              <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-primary" />
-            </button>
+            <NotificationBell />
 
             <div className="hidden items-center gap-2 border-l border-border pl-3 sm:flex">
               <div className="relative flex h-8 w-8 items-center justify-center rounded-full bg-primary-light text-xs font-bold text-primary">
@@ -284,6 +315,9 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({ children, addres
           ))}
         </nav>
       </div>
+      {activeRole === "customer" && locationOpen && (
+        <CustomerLocationModal open initialAddress={myAddress} onClose={() => setLocationOpen(false)} onSaved={setMyAddress} />
+      )}
     </div>
   );
 };
