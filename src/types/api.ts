@@ -293,6 +293,8 @@ export interface ArtisanSummary {
   min_price: string;
   max_price: string;
   is_open?: boolean;
+  /** On a paid plan: shows the Verified Provider badge. */
+  verified?: boolean;
   /** Distance from the customer, when their location is known. */
   distance_km?: number | null;
 }
@@ -317,6 +319,7 @@ export interface ArtisanDetail {
   rating: number;
   review_count: number;
   is_open: boolean;
+  verified?: boolean;
 }
 
 export interface ArtisanReview {
@@ -330,40 +333,36 @@ export interface ArtisanReview {
 
 // ==================== CHAT ====================
 
+export interface ChatParty {
+  id: number; // profile id
+  user: { id: number; email?: string };
+  first_name?: string;
+  last_name?: string;
+  full_name?: string;
+  profile_picture?: string | null;
+}
+
 export interface ChatRoom {
   id: string; // UUID
-  artisan: {
-    id: number;
-    name?: string;
-    first_name?: string;
-    last_name?: string;
-    profile_picture?: string;
-    business_name?: string;
-  };
-  client: {
-    id: number;
-    name?: string;
-    first_name?: string;
-    last_name?: string;
-  };
-  last_message?: ChatMessage;
+  artisan: ChatParty & { business_name?: string; is_online?: boolean };
+  client: ChatParty;
+  last_message?: ChatMessage | null;
   unread_count?: number;
+  created_at?: string;
   updated_at?: string;
 }
 
 export interface ChatMessage {
   id: string;
   room?: string;
-  sender?: {
-    id: number;
-    name?: string;
-    email?: string;
-  };
-  message_type: "text" | "file";
-  content?: string;
-  file?: string;
+  /** Account id of the sender (as a string). */
+  sender: string;
+  sender_name?: string;
+  message_type: "text" | "image" | "file";
+  content?: string | null;
+  file_url?: string | null;
+  timestamp: string;
   is_read?: boolean;
-  created_at: string;
 }
 
 export interface SendTextMessagePayload {
@@ -448,7 +447,16 @@ export interface DirectDebitPayload {
 
 // ==================== PLANS & SUBSCRIPTIONS ====================
 
+export interface MySubscriptionState {
+  plan: "free" | "standard" | "premium";
+  expires_at: string | null;
+  fee_percent: number;
+  verified: boolean;
+}
+
 export interface BillingPlan {
+  fee_percent?: number;
+  verified?: boolean;
   id: number;
   name: string;
   description: string;

@@ -1,5 +1,6 @@
 "use client";
 
+import { VerifiedBadge } from "@/components/ui/VerifiedBadge";
 import { SaveButton } from "@/components/ui/SaveButton";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -141,7 +142,10 @@ export function ProviderDetailContent({ providerId }: { providerId: string }) {
                 {provider.name.charAt(0)}
               </div>
               <div>
-                <h1 className="text-lg font-extrabold text-foreground">{provider.name}</h1>
+                <h1 className="flex items-center gap-1.5 text-lg font-extrabold text-foreground">
+                  {provider.name}
+                  {provider.verified && <VerifiedBadge size={18} />}
+                </h1>
                 {provider.tagline && <p className="text-sm text-muted">{provider.tagline}</p>}
                 <div className="mt-1 flex items-center gap-2">
                   <StarRatingDisplay rating={provider.rating} size={14} />

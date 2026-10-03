@@ -18,6 +18,7 @@ import { useAuthStore } from "@/store/useAuthStore";
 import { CustomerLocationModal } from "@/components/layout/CustomerLocationModal";
 import { onboardingApi } from "@/lib/api/onboarding";
 import { NotificationBell } from "@/components/layout/NotificationBell";
+import { useMyPlan } from "@/hooks/useMyPlan";
 import { useRoleSwitcher } from "@/hooks/useRoleSwitcher";
 import { useProviderOnline } from "@/hooks/useProviderOnline";
 
@@ -40,6 +41,7 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({ children, addres
   const [expanded, setExpanded] = useState(false);
   const { activeRole } = useAuthStore();
   const switchRole = useRoleSwitcher();
+  const plan = useMyPlan(activeRole === "provider");
   const [myAddress, setMyAddress] = useState("");
   const [locationOpen, setLocationOpen] = useState(false);
 
@@ -182,9 +184,9 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({ children, addres
               >
                 <span className="flex items-center gap-1.5">
                   <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                  <span>Free Plan</span>
+                  <span>{plan.label} Plan</span>
                 </span>
-                <span className="text-primary hover:underline">Upgrade</span>
+                <span className="text-primary hover:underline">{plan.isFree ? "Upgrade" : "Manage"}</span>
               </button>
             </div>
           )}

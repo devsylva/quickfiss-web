@@ -26,6 +26,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { FormError } from "@/components/ui/FormError";
 import { CustomerLocationModal } from "@/components/layout/CustomerLocationModal";
+import { useMyPlan } from "@/hooks/useMyPlan";
 import { authApi } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
 import { useAuthStore } from "@/store/useAuthStore";
@@ -182,6 +183,7 @@ export default function ProfilePage() {
   };
 
   const isProvider = activeRole === "provider";
+  const plan = useMyPlan(isProvider);
 
   return (
     <ProfileFrame
@@ -312,14 +314,14 @@ export default function ProfilePage() {
                     <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-600 text-white">
                       <Crown size={15} color="#ffffff" variant="Bold" />
                     </div>
-                    <span className="text-xs font-extrabold text-emerald-950">Free Plan</span>
+                    <span className="text-xs font-extrabold text-emerald-950">{plan.label} Plan</span>
                   </div>
                   <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
                     Active
                   </span>
                 </div>
                 <p className="mt-2 text-xs leading-relaxed text-emerald-900/80">
-                  Upgrade your plan to unlock priority leads, custom marketing, and verified badges.
+                  Upgrade for a verified badge, better placement and a lower platform fee.
                 </p>
                 <button
                   type="button"
@@ -458,7 +460,7 @@ export default function ProfilePage() {
                   icon={<Crown {...ICON_PROPS} />}
                   title="Subscription Plans"
                   description="Explore Free, Standard, and Premium tiers to unlock higher visibility."
-                  badge="Tier: Free"
+                  badge={`Tier: ${plan.label}`}
                   badgeColor="bg-amber-50 text-amber-800"
                   onClick={() => router.push("/dashboard/subscription")}
                 />
@@ -711,12 +713,12 @@ export default function ProfilePage() {
               </div>
               <div>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-bold text-emerald-950">Free Subscription</span>
+                  <span className="text-xs font-bold text-emerald-950">{plan.label} Subscription</span>
                   <span className="rounded-full bg-emerald-200/70 px-1.5 py-0.2 text-[9px] font-bold text-emerald-900">
                     Active
                   </span>
                 </div>
-                <p className="text-[11px] text-emerald-800/80">Upgrade to unlock priority jobs</p>
+                <p className="text-[11px] text-emerald-800/80">Verified badge, better placement, lower fee</p>
               </div>
             </div>
             <ArrowRight2 size={16} color="#047857" variant="Linear" />
@@ -752,7 +754,7 @@ export default function ProfilePage() {
             <MobileRow
               icon={<Crown {...ROW_ICON_PROPS} />}
               label="Subscription Plans"
-              value="Free Plan"
+              value={`${plan.label} Plan`}
               onClick={() => router.push("/dashboard/subscription")}
             />
           )}

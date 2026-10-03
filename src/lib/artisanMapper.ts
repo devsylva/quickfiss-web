@@ -48,6 +48,7 @@ export function summaryToProvider(item: ArtisanSummary): Provider {
         ? `${item.distance_km} km away${item.location ? ` · ${item.location}` : ""}`
         : item.location || "Location not set",
     isOpen: item.is_open ?? true,
+    verified: item.verified,
     rating: item.rating,
     reviewCount: item.review_count,
     image: item.profile_picture ?? undefined,
@@ -76,6 +77,7 @@ export function detailToProvider(item: ArtisanDetail, reviews: ArtisanReview[] =
     tags: item.services,
     distance: item.location || "Location not set",
     isOpen: item.is_open,
+    verified: item.verified,
     rating: item.rating,
     reviewCount: item.review_count,
     image: item.profile_picture ?? undefined,

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Gallery, Location, Star1 } from "iconsax-react";
+import { VerifiedBadge } from "@/components/ui/VerifiedBadge";
 import { SaveButton } from "@/components/ui/SaveButton";
 
 export interface Review {
@@ -23,6 +24,8 @@ export interface Provider {
   tags: string[];
   distance: string;
   isOpen: boolean;
+  /** Paid-plan providers carry a Verified Provider badge. */
+  verified?: boolean;
   rating: number;
   reviewCount: number;
   image?: string;
@@ -62,6 +65,7 @@ export const ProviderCard: React.FC<{ provider: Provider }> = ({ provider }) => 
           {provider.name.charAt(0)}
         </div>
         <span className="text-base font-semibold text-foreground">{provider.name}</span>
+        {provider.verified && <VerifiedBadge />}
       </div>
       <SaveButton providerId={provider.id} />
     </div>

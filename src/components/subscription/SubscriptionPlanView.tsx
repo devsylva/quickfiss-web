@@ -1,10 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/Button";
+import { Modal } from "@/components/ui/Modal";
+import { useRouter, useSearchParams } from "next/navigation";
 import { TickCircle } from "iconsax-react";
 import { billingsApi } from "@/lib/api/billings";
+import { walletApi } from "@/lib/api/wallet";
+import { formatNaira } from "@/lib/money";
+import type { BillingPlan } from "@/types/api";
 
 export type PlanType = "free" | "standard" | "premium";
 
@@ -16,7 +21,6 @@ interface PlanFeature {
 
 interface PlanData {
   id: PlanType;
-  apiPlanId?: number;
   name: string;
   badge?: string;
   price: string;
@@ -28,78 +32,72 @@ interface PlanData {
 const plans: Record<PlanType, PlanData> = {
   free: {
     id: "free",
-    apiPlanId: 1,
     name: "Free",
-    badge: "Active",
-    price: "$0",
+    price: "Free",
     period: "forever",
-    cardDescription:
-      "We send you job offers that match what you're good at, so you don't have to search too hard. Just the right jobs, sent straight to you!",
+    cardDescription: "Everything you need to start getting booked: job requests that match your services.",
     features: [
       {
-        title: "Tailored Job Request Notification",
-        description:
-          "We send you job offers that match what you're good at, so you don't have to search too hard. Just the right jobs, sent straight to you!",
+        title: "Job requests",
+        description: "Get booking requests from customers who find you in search.",
         icon: "notification",
       },
     ],
   },
   standard: {
     id: "standard",
-    apiPlanId: 2,
     name: "Standard",
-    price: "$19",
+    price: "",
     period: "per month",
-    cardDescription:
-      "Great for growing artisans ready to scale their bookings, stand out to local clients, and access priority direct communication.",
+    cardDescription: "Stand out with a trust badge, appear above free providers and keep more of every job.",
     features: [
       {
-        title: "Priority Job Notification",
-        description:
-          "Get notified 15 minutes before free tier providers for high-budget matching requests.",
-        icon: "notification",
-      },
-      {
-        title: "Verified Provider Status",
-        description:
-          "Stand out to potential clients with a verified artisan trust badge on your profile.",
+        title: "Verified Provider badge",
+        description: "A trust badge on your profile and in search results.",
         icon: "verified",
       },
       {
-        title: "Direct Client Messaging",
-        description:
-          "Clients will be able to message you directly before booking confirmations.",
-        icon: "chat",
+        title: "Better placement",
+        description: "Listed above free providers when customers browse and search.",
+        icon: "chart",
+      },
+      {
+        title: "Lower platform fee",
+        description: "Keep more of every job you complete.",
+        icon: "cash",
       },
     ],
   },
   premium: {
     id: "premium",
-    apiPlanId: 3,
     name: "Premium",
-    price: "$49",
+    price: "",
     period: "per month",
-    cardDescription:
-      "For people who want to grow their business and get the most out of Quickfiss. Everything in the Standard Plan, plus more tools to help you grow faster.",
+    cardDescription: "Everything in Standard, with the top spot in search and our lowest platform fee.",
     features: [
       {
-        title: "Instant Verified Badge",
-        description: "Get verified badge on registeration",
+        title: "Verified Provider badge",
+        description: "A trust badge on your profile and in search results.",
         icon: "verified",
       },
       {
-        title: "Weekly Top Chart",
-        description: "Be listed among top tier providers within your region",
+        title: "Top placement",
+        description: "Listed first, above Standard and free providers.",
         icon: "chart",
       },
       {
-        title: "Accept Cash Payment",
-        description: "Get cash back and instant withdrawal",
+        title: "Lowest platform fee",
+        description: "Our lowest fee on every job you complete.",
         icon: "cash",
       },
     ],
   },
 };
+
+interface MySubscription {
+  plan: PlanType;
+  expires_at: string | null;
+}
 
 export function SubscriptionPlanView({
   onPlanSelected,
@@ -109,42 +107,112 @@ export function SubscriptionPlanView({
   showSkip?: boolean;
 }) {
   const router = useRouter();
-  const [selectedPlan, setSelectedPlan] = useState<PlanType>("free");
-  const [activeSubscribedPlan, setActiveSubscribedPlan] = useState<PlanType>("free");
-  const [isSubscribing, setIsSubscribing] = useState(false);
+  const returned = useSearchParams().get("paid");
+  const [selectedPlan, setSelectedPlan] = useState<PlanType | null>(null);
+  const [mine, setMine] = useState<MySubscription>({ plan: "free", expires_at: null });
+  const [apiPlans, setApiPlans] = useState<Partial<Record<PlanType, BillingPlan & { fee_percent?: number }>>>({});
+  const [loading, setLoading] = useState(true);
+  const [payOpen, setPayOpen] = useState(false);
+  const [walletBalance, setWalletBalance] = useState<number | null>(null);
+  const [paying, setPaying] = useState<"wallet" | "card" | null>(null);
+  const [payError, setPayError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
-  const currentPlan = plans[selectedPlan];
+  const toast = (text: string) => {
+    setToastMessage(text);
+    setTimeout(() => setToastMessage(null), 4000);
+  };
 
-  const handleSubscribe = async () => {
-    if (isSubscribing) return;
-    // Paid plans have no payment step yet, so don't pretend they can be bought.
-    if (selectedPlan !== "free") {
-      setToastMessage(`The ${currentPlan.name} plan isn't available yet. We'll let you know when it is.`);
-      setTimeout(() => setToastMessage(null), 3500);
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      try {
+        // Coming back from Paystack: confirm the card payment before reading the plan.
+        if (returned) await billingsApi.verifySubscriptionPayment().catch(() => {});
+        const [list, sub] = await Promise.all([billingsApi.getPlans(), billingsApi.getSubscription()]);
+        if (cancelled) return;
+        const byName: Partial<Record<PlanType, BillingPlan>> = {};
+        (Array.isArray(list) ? list : []).forEach((p) => {
+          byName[p.name as PlanType] = p;
+        });
+        setApiPlans(byName);
+        setMine({ plan: (sub.plan as PlanType) ?? "free", expires_at: sub.expires_at ?? null });
+        if (returned) toast(sub.plan === "free" ? "We haven't received that payment yet." : `You're now on the ${plans[sub.plan as PlanType]?.name} plan.`);
+      } catch (err: unknown) {
+        if (!cancelled) toast(err instanceof Error ? err.message : "We couldn't load the plans.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [returned, reloadKey]);
+
+  const shown: PlanType = selectedPlan ?? mine.plan;
+  const currentPlan = plans[shown];
+  const apiPlan = apiPlans[shown];
+  const priceOf = (key: PlanType) => (key === "free" ? "Free" : apiPlans[key] ? formatNaira(apiPlans[key]!.price) : "");
+  const isCurrent = mine.plan === shown;
+  const expiry = mine.expires_at ? new Date(mine.expires_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : null;
+
+  const openPay = async () => {
+    setPayError(null);
+    setPayOpen(true);
+    setWalletBalance(null);
+    try {
+      setWalletBalance(Number((await walletApi.getMyWallet()).balance));
+    } catch {
+      setWalletBalance(null);
+    }
+  };
+
+  const handleSubscribe = () => {
+    if (shown === "free") {
+      if (mine.plan !== "free") {
+        toast(`You'll move to Free when your ${plans[mine.plan].name} plan ends${expiry ? ` on ${expiry}` : ""}.`);
+        return;
+      }
+      if (onPlanSelected) onPlanSelected("free");
+      else router.push("/dashboard");
       return;
     }
-    setIsSubscribing(true);
+    openPay();
+  };
+
+  const payWithWallet = async () => {
+    if (!apiPlan || paying) return;
+    setPaying("wallet");
+    setPayError(null);
     try {
-      if (currentPlan.apiPlanId) {
-        try {
-          await billingsApi.createSubscription(currentPlan.apiPlanId);
-        } catch (err: unknown) {
-          // An account that already has a plan just stays on it; anything else is a real failure.
-          if (!(err instanceof Error && /already have a subscription/i.test(err.message))) throw err;
-        }
-      }
-      setActiveSubscribedPlan(selectedPlan);
-      setToastMessage("You're on the Free plan.");
-      setTimeout(() => {
-        if (onPlanSelected) onPlanSelected(selectedPlan);
-        else router.push("/dashboard");
-      }, 1500);
+      await billingsApi.purchaseSubscription(apiPlan.id, "wallet");
+      setPayOpen(false);
+      setSelectedPlan(null);
+      setReloadKey((k) => k + 1);
+      toast(`You're now on the ${currentPlan.name} plan.`);
+      onPlanSelected?.(shown);
     } catch (err: unknown) {
-      setToastMessage(err instanceof Error ? err.message : "We couldn't update your plan. Please try again.");
-      setTimeout(() => setToastMessage(null), 3500);
+      setPayError(err instanceof Error ? err.message : "We couldn't take that payment.");
     } finally {
-      setIsSubscribing(false);
+      setPaying(null);
+    }
+  };
+
+  const payWithCard = async () => {
+    if (!apiPlan || paying) return;
+    setPaying("card");
+    setPayError(null);
+    try {
+      const { authorization_url } = await billingsApi.purchaseSubscriptionByCard(
+        apiPlan.id,
+        `${window.location.origin}/dashboard/subscription?paid=1`,
+      );
+      window.location.assign(authorization_url);
+    } catch (err: unknown) {
+      setPayError(err instanceof Error ? err.message : "We couldn't start the payment.");
+      setPaying(null);
     }
   };
 
@@ -280,7 +348,7 @@ export function SubscriptionPlanView({
         {/* Plan Selector Pill Tabs (Matching Screenshot 1 & 2) */}
         <div className="mt-6 flex items-center gap-2 sm:gap-4">
           {(["free", "standard", "premium"] as PlanType[]).map((planKey) => {
-            const isSelected = selectedPlan === planKey;
+            const isSelected = shown === planKey;
             const p = plans[planKey];
             return (
               <button
@@ -306,12 +374,21 @@ export function SubscriptionPlanView({
               {currentPlan.name}
             </h2>
 
-            {activeSubscribedPlan === selectedPlan && (
+            {isCurrent && (
               <span className="rounded-full bg-[#dbeafe] px-3 py-1 text-xs font-bold text-[#2563eb]">
                 Active
               </span>
             )}
           </div>
+          {shown !== "free" && apiPlan && (
+            <p className="mt-1 text-sm font-bold text-foreground">
+              {priceOf(shown)} <span className="font-medium text-muted">/ {apiPlan.duration_days} days</span>
+            </p>
+          )}
+          {isCurrent && expiry && <p className="mt-1 text-xs text-zinc-600">Active until {expiry}</p>}
+          {shown !== "free" && apiPlan?.fee_percent !== undefined && (
+            <p className="mt-1 text-xs text-zinc-600">Platform fee: {apiPlan.fee_percent}% per job</p>
+          )}
 
           <p className="mt-3 text-xs leading-relaxed text-zinc-700 sm:text-sm">
             {currentPlan.cardDescription}
@@ -350,7 +427,7 @@ export function SubscriptionPlanView({
           <div className="grid grid-cols-3 gap-4">
             {(["free", "standard", "premium"] as PlanType[]).map((pKey) => {
               const p = plans[pKey];
-              const isSelected = selectedPlan === pKey;
+              const isSelected = shown === pKey;
               return (
                 <div
                   key={pKey}
@@ -363,7 +440,7 @@ export function SubscriptionPlanView({
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-bold text-foreground">{p.name}</span>
-                    <span className="text-xs font-extrabold text-primary">{p.price}</span>
+                    <span className="text-xs font-extrabold text-primary">{priceOf(pKey)}</span>
                   </div>
                   <p className="mt-1 text-[11px] text-muted line-clamp-2">{p.cardDescription}</p>
                 </div>
@@ -378,16 +455,52 @@ export function SubscriptionPlanView({
         <button
           type="button"
           onClick={handleSubscribe}
-          disabled={isSubscribing}
+          disabled={loading || (isCurrent && shown !== "free" ? false : isCurrent)}
           className="w-full rounded-2xl bg-primary py-4 text-center text-sm font-bold text-white shadow-md transition-all hover:bg-primary-dark active:scale-95 disabled:opacity-70 sm:text-base"
         >
-          {isSubscribing
-            ? "Updating Plan..."
-            : activeSubscribedPlan === selectedPlan
-            ? "Current Plan"
-            : "Subscribe"}
+          {loading
+            ? "Loading..."
+            : shown === "free"
+              ? isCurrent
+                ? "Current Plan"
+                : "Switch to Free when my plan ends"
+              : isCurrent
+                ? `Extend by ${apiPlan?.duration_days ?? 30} days · ${priceOf(shown)}`
+                : `Subscribe · ${priceOf(shown)}`}
         </button>
       </div>
+
+      <Modal open={payOpen} position="bottom">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-bold text-foreground">
+            {currentPlan.name} · {priceOf(shown)}
+          </h2>
+          <button type="button" onClick={() => setPayOpen(false)} aria-label="Close">
+            <span className="text-xl text-foreground">×</span>
+          </button>
+        </div>
+        <p className="mt-2 text-xs leading-relaxed text-muted">
+          Pay for {apiPlan?.duration_days ?? 30} days. It doesn&apos;t renew by itself; you can extend any time.
+        </p>
+        {payError && <p className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-medium text-red-700">{payError}</p>}
+        <div className="mt-5 flex flex-col gap-3">
+          <Button
+            isLoading={paying === "wallet"}
+            disabled={paying !== null || (walletBalance !== null && apiPlan !== undefined && walletBalance < Number(apiPlan.price))}
+            onClick={payWithWallet}
+          >
+            Pay from wallet{walletBalance !== null ? ` (${formatNaira(walletBalance)})` : ""}
+          </Button>
+          <Button variant="secondary" isLoading={paying === "card"} disabled={paying !== null} onClick={payWithCard}>
+            Pay with card
+          </Button>
+          {walletBalance !== null && apiPlan !== undefined && walletBalance < Number(apiPlan.price) && (
+            <Link href="/dashboard/wallet" className="text-center text-xs font-semibold text-primary">
+              Add money to your wallet
+            </Link>
+          )}
+        </div>
+      </Modal>
     </div>
   );
 }

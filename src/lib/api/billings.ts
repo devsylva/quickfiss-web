@@ -1,5 +1,6 @@
 import { apiClient } from "./client";
 import type {
+  MySubscriptionState,
   BillingPlan,
   Subscription,
   CreateBillingPlanPayload,
@@ -75,10 +76,42 @@ export const billingsApi = {
   },
 
   /**
-   * Get current user's subscription details
+   * Buy a paid plan for 30 days from the wallet
+   */
+  purchaseSubscription: (plan_id: number, method: "wallet") => {
+    return apiClient<MySubscriptionState>("/api/billings/subscription/purchase/", {
+      method: "POST",
+      body: { plan_id, method },
+      requiresAuth: true,
+    });
+  },
+
+  /**
+   * Buy a paid plan by card: returns the Paystack link to open
+   */
+  purchaseSubscriptionByCard: (plan_id: number, callback_url: string) => {
+    return apiClient<{ authorization_url: string; reference: string }>("/api/billings/subscription/purchase/", {
+      method: "POST",
+      body: { plan_id, method: "card", callback_url },
+      requiresAuth: true,
+    });
+  },
+
+  /**
+   * After returning from Paystack: confirm the card payment
+   */
+  verifySubscriptionPayment: () => {
+    return apiClient<MySubscriptionState>("/api/billings/subscription/verify/", {
+      method: "POST",
+      requiresAuth: true,
+    });
+  },
+
+  /**
+   * The plan the signed-in user is on right now
    */
   getSubscription: () => {
-    return apiClient<Subscription>("/api/billings/subscription/", {
+    return apiClient<MySubscriptionState>("/api/billings/subscription/", {
       method: "GET",
       requiresAuth: true,
     });

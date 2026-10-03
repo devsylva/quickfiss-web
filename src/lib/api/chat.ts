@@ -45,6 +45,20 @@ export const chatApi = {
   },
 
   /**
+   * Send a message: text, a photo, or a photo with a caption
+   */
+  sendMessage: (roomId: string, payload: { content?: string; file?: File }) => {
+    const body = new FormData();
+    if (payload.content) body.append("content", payload.content);
+    if (payload.file) body.append("file", payload.file);
+    return apiClient<ChatMessage>(`/api/chat/rooms/${roomId}/send/`, {
+      method: "POST",
+      body,
+      requiresAuth: true,
+    });
+  },
+
+  /**
    * Send a text message
    */
   sendTextMessage: (roomId: string, content: string) => {

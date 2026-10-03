@@ -1,274 +1,264 @@
 "use client";
 
-import { Suspense, useEffect, useState, useRef } from "react";
-import { useSearchParams } from "next/navigation";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { DashboardShell } from "@/components/layout/DashboardShell";
-import { Sms, SearchNormal1, MessageQuestion, Send2, DocumentUpload } from "iconsax-react";
+import { ChatListView } from "@/components/chat/ChatListView";
+import { ChatDetailView } from "@/components/chat/ChatDetailView";
 import { chatApi } from "@/lib/api/chat";
-import type { ChatRoom, ChatMessage } from "@/types/api";
+import { messageToItem, roomToConversation } from "@/lib/chatMapper";
+import { useAuthStore } from "@/store/useAuthStore";
+import type { ChatMessage, ChatRoom } from "@/types/api";
+import type { ChatMessageItem } from "@/types/chat";
+
+const ROOM_POLL_MS = 10000;
+const MESSAGE_POLL_MS = 4000;
 
 function ChatsContent() {
-  // /dashboard/chats?room=<id> opens that conversation (used by the "Message" buttons).
-  const wantedRoom = useSearchParams().get("room");
-  const [rooms, setRooms] = useState<ChatRoom[]>([]);
-  const [selectedRoom, setSelectedRoom] = useState<ChatRoom | null>(null);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [inputText, setInputText] = useState("");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const wantedRoom = searchParams.get("room");
+  const { activeRole, initAuth, user } = useAuthStore();
+  const meId = Number(user?.id ?? 0);
+
+  const [tabChoice, setTabChoice] = useState<"unread" | "read" | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [isLoadingRooms, setIsLoadingRooms] = useState(true);
-  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
-  const [isSending, setIsSending] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [rooms, setRooms] = useState<ChatRoom[]>([]);
+  const [roomsLoaded, setRoomsLoaded] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [selectedIdState, setSelectedIdState] = useState<string | null>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messagesRoom, setMessagesRoom] = useState<string | null>(null);
+  const [outbox, setOutbox] = useState<(ChatMessageItem & { roomId: string })[]>([]);
+  const markedRead = useRef<Set<string>>(new Set());
 
   useEffect(() => {
-    let isMounted = true;
-    async function fetchRooms() {
-      setIsLoadingRooms(true);
+    initAuth();
+  }, [initAuth]);
+
+  // The conversations list, refreshed every few seconds.
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
       try {
         const data = await chatApi.getChatRooms();
-        if (isMounted) {
-          setRooms(Array.isArray(data) ? data : []);
-          if (data && data.length > 0) {
-            setSelectedRoom((current) => current || data.find((room) => room.id === wantedRoom) || data[0]);
-          }
-        }
-      } catch {
-        // Fallback for preview
+        if (cancelled) return;
+        setRooms(Array.isArray(data) ? data : []);
+        setLoadError(null);
+      } catch (err: unknown) {
+        if (!cancelled) setLoadError(err instanceof Error ? err.message : "We couldn't load your chats.");
       } finally {
-        if (isMounted) setIsLoadingRooms(false);
+        if (!cancelled) setRoomsLoaded(true);
       }
     }
-
-    fetchRooms();
+    load();
+    const timer = setInterval(load, ROOM_POLL_MS);
     return () => {
-      isMounted = false;
+      cancelled = true;
+      clearInterval(timer);
     };
-  }, [wantedRoom]);
+  }, []);
 
+  // Only the chats where the signed-in user is on this side of the app.
+  const sideRooms = useMemo(
+    () =>
+      rooms.filter((room) =>
+        activeRole === "provider" ? room.artisan.user.id === meId : room.client.user.id === meId,
+      ),
+    [rooms, activeRole, meId],
+  );
+
+  const selectedId = useMemo(() => {
+    if (selectedIdState) return selectedIdState;
+    if (wantedRoom && sideRooms.some((r) => r.id === wantedRoom)) return wantedRoom;
+    return null;
+  }, [selectedIdState, wantedRoom, sideRooms]);
+
+  // Desktop shows the first chat when none is chosen; mobile shows the list.
+  const activeId = selectedId ?? sideRooms[0]?.id ?? null;
+
+  // The open conversation's messages, refreshed while it's open.
   useEffect(() => {
-    let isMounted = true;
-    if (!selectedRoom) return;
-
-    async function fetchMessages() {
-      setIsLoadingMessages(true);
+    if (!activeId) return;
+    let cancelled = false;
+    async function load() {
       try {
-        const data = await chatApi.getRoomMessages(selectedRoom!.id);
-        if (isMounted) {
-          setMessages(Array.isArray(data) ? data : []);
-        }
+        const data = await chatApi.getRoomMessages(activeId as string);
+        if (cancelled) return;
+        setMessages(Array.isArray(data) ? data : []);
+        setMessagesRoom(activeId);
       } catch {
-        if (isMounted) setMessages([]);
-      } finally {
-        if (isMounted) setIsLoadingMessages(false);
+        // keep what we have; the next poll will try again
       }
     }
-
-    fetchMessages();
+    load();
+    const timer = setInterval(load, MESSAGE_POLL_MS);
     return () => {
-      isMounted = false;
+      cancelled = true;
+      clearInterval(timer);
     };
-  }, [selectedRoom]);
+  }, [activeId]);
 
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inputText.trim() || !selectedRoom || isSending) return;
+  // Tell the server the other person's messages have been seen.
+  useEffect(() => {
+    if (!activeId || messagesRoom !== activeId || !meId) return;
+    const unseen = messages.filter((m) => Number(m.sender) !== meId && !m.is_read && !markedRead.current.has(m.id));
+    if (unseen.length === 0) return;
+    unseen.forEach((m) => markedRead.current.add(m.id));
+    chatApi
+      .markMessagesRead(activeId, { message_ids: unseen.map((m) => m.id) })
+      .then(() => setRooms((prev) => prev.map((r) => (r.id === activeId ? { ...r, unread_count: 0 } : r))))
+      .catch(() => unseen.forEach((m) => markedRead.current.delete(m.id)));
+  }, [messages, messagesRoom, activeId, meId]);
 
-    const content = inputText.trim();
-    setInputText("");
-    setIsSending(true);
+  const conversations = useMemo(
+    () =>
+      sideRooms.map((room) => {
+        const live =
+          room.id === activeId && messagesRoom === activeId
+            ? messages.map((m) => messageToItem(m, meId))
+            : [];
+        const sending = outbox.filter((o) => o.roomId === room.id);
+        return roomToConversation(room, activeRole, [...live, ...sending]);
+      }),
+    [sideRooms, activeId, messagesRoom, messages, outbox, activeRole, meId],
+  );
 
-    try {
-      const newMsg = await chatApi.sendTextMessage(selectedRoom.id, content);
-      setMessages((prev) => [...prev, newMsg]);
-    } catch {
-      // Local optimistic append
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: String(Date.now()),
-          content,
-          message_type: "text",
-          created_at: new Date().toISOString(),
-        },
-      ]);
-    } finally {
-      setIsSending(false);
-    }
-  };
+  const unreadExists = conversations.some((c) => c.isUnread);
+  const activeTab = tabChoice ?? (unreadExists ? "unread" : "read");
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !selectedRoom) return;
+  const filteredConversations = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return conversations.filter((conv) => {
+      if (activeTab === "unread" && !conv.isUnread) return false;
+      if (activeTab === "read" && conv.isUnread) return false;
+      if (q && !conv.recipientName.toLowerCase().includes(q) && !conv.lastMessage.toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [conversations, activeTab, searchQuery]);
 
-    try {
-      const newMsg = await chatApi.sendFileMessage(selectedRoom.id, file);
-      setMessages((prev) => [...prev, newMsg]);
-    } catch {
-      // Handle error
-    }
-  };
+  const activeConversation = conversations.find((c) => c.id === activeId) ?? null;
+  const setSelectedId = (id: string | null) => setSelectedIdState(id);
 
-  const filteredRooms = rooms.filter((r) => {
-    const name = r.artisan?.name || r.artisan?.first_name || r.artisan?.business_name || "";
-    return name.toLowerCase().includes(searchQuery.toLowerCase());
-  });
+  const handleSendMessage = useCallback(
+    async (roomId: string, text: string, file?: File) => {
+      const tempId = `pending-${Date.now()}`;
+      const draft: ChatMessageItem & { roomId: string } = {
+        id: tempId,
+        roomId,
+        senderId: String(meId),
+        senderName: "",
+        isMe: true,
+        text: text || undefined,
+        image: file ? URL.createObjectURL(file) : undefined,
+        timestamp: "",
+        pending: true,
+      };
+      setOutbox((prev) => [...prev, draft]);
+      try {
+        const sent = await chatApi.sendMessage(roomId, { content: text || undefined, file });
+        setMessages((prev) => (prev.some((m) => m.id === sent.id) ? prev : [...prev, sent]));
+        setOutbox((prev) => prev.filter((o) => o.id !== tempId));
+        setRooms((prev) => prev.map((r) => (r.id === roomId ? { ...r, last_message: sent } : r)));
+      } catch {
+        setOutbox((prev) => prev.map((o) => (o.id === tempId ? { ...o, pending: false, failed: true } : o)));
+      }
+    },
+    [meId],
+  );
+
+  if (!roomsLoaded) {
+    return (
+      <DashboardShell>
+        <div className="flex h-full items-center justify-center text-sm text-muted">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          <span className="ml-3">Loading your chats...</span>
+        </div>
+      </DashboardShell>
+    );
+  }
 
   return (
     <DashboardShell>
-      <div className="flex h-full flex-col lg:flex-row">
-        {/* Chats Sidebar */}
-        <div className="flex w-full flex-col border-b border-border bg-white lg:h-full lg:w-80 lg:border-b-0 lg:border-r xl:w-96">
-          <div className="border-b border-border p-4 lg:p-6">
-            <h1 className="text-2xl font-extrabold text-foreground">Messages</h1>
-            <div className="mt-4 flex items-center gap-2 rounded-xl border border-border bg-zinc-50/70 px-3 py-2 text-sm text-muted">
-              <SearchNormal1 size={16} color="#a1a1aa" variant="Linear" />
-              <input
-                type="text"
-                placeholder="Search conversations..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-transparent text-foreground placeholder-zinc-400 outline-none text-xs"
-              />
-            </div>
+      {loadError && (
+        <div className="border-b border-red-200 bg-red-50 px-4 py-2 text-xs font-medium text-red-700">{loadError}</div>
+      )}
+      <div className="flex h-full w-full overflow-hidden bg-white">
+        {/* ========================================================= */}
+        {/* DESKTOP & TABLET: SIDE-BY-SIDE SPLIT SCREEN (>= 768px)    */}
+        {/* ========================================================= */}
+        <div className="hidden h-full w-full md:flex">
+          {/* Left Pane: Chat List (width 320px on tablet, 380px on desktop) */}
+          <div className="flex h-full w-80 shrink-0 flex-col border-r border-border/70 bg-white lg:w-96">
+            <ChatListView
+              conversations={filteredConversations}
+              selectedId={selectedId}
+              onSelect={(id) => setSelectedId(id)}
+              activeTab={activeTab}
+              onTabChange={(tab) => setTabChoice(tab)}
+              searchQuery={searchQuery}
+              onSearchChange={(q) => setSearchQuery(q)}
+              showBack={false}
+            />
           </div>
 
-          <div className="flex-1 overflow-y-auto">
-            {isLoadingRooms ? (
-              <div className="flex flex-col items-center justify-center p-8 text-xs text-muted">
-                <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                <span className="mt-2">Loading chats...</span>
-              </div>
-            ) : filteredRooms.length === 0 ? (
-              <div className="flex flex-col items-center justify-center p-8 text-center text-muted">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-light text-primary">
-                  <Sms size={24} color="#3d5afe" variant="Bold" />
-                </div>
-                <p className="mt-3 text-sm font-semibold text-foreground">No conversations yet</p>
-                <p className="mt-1 text-xs text-muted">
-                  Direct messages with service providers will appear here when you message or book them.
-                </p>
-              </div>
+          {/* Right Pane: Active Chat Detail or Select Prompt */}
+          <div className="flex flex-1 flex-col overflow-hidden bg-[#fafafa]">
+            {activeConversation ? (
+              <ChatDetailView
+                conversation={activeConversation}
+                onSendMessage={handleSendMessage}
+                showBack={false}
+              />
             ) : (
-              <div className="divide-y divide-border">
-                {filteredRooms.map((room) => {
-                  const isSelected = selectedRoom?.id === room.id;
-                  const name =
-                    room.artisan?.name ||
-                    room.artisan?.first_name ||
-                    room.artisan?.business_name ||
-                    "Artisan";
-                  return (
-                    <button
-                      key={room.id}
-                      type="button"
-                      onClick={() => setSelectedRoom(room)}
-                      className={`flex w-full items-center gap-3 p-4 text-left transition-colors ${
-                        isSelected ? "bg-primary-light/50" : "hover:bg-zinc-50"
-                      }`}
-                    >
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-light text-sm font-bold text-primary">
-                        {name.charAt(0)}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <p className="truncate text-sm font-semibold text-foreground">{name}</p>
-                          {room.unread_count ? (
-                            <span className="flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-white">
-                              {room.unread_count}
-                            </span>
-                          ) : null}
-                        </div>
-                        <p className="truncate text-xs text-muted">
-                          {room.last_message?.content || "Click to open conversation"}
-                        </p>
-                      </div>
-                    </button>
-                  );
-                })}
+              <div className="flex h-full flex-col items-center justify-center p-8 text-center text-muted">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary-light text-primary">
+                  <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                    />
+                  </svg>
+                </div>
+                <h3 className="mt-4 text-base font-extrabold text-foreground">
+                  Select a Conversation
+                </h3>
+                <p className="mt-1 max-w-sm text-xs text-muted">
+                  Choose a chat on the left to coordinate services, ask questions, or review attachments.
+                </p>
               </div>
             )}
           </div>
         </div>
 
-        {/* Conversation View Area on Desktop */}
-        {selectedRoom ? (
-          <div className="flex flex-1 flex-col bg-white">
-            {/* Chat Room Header */}
-            <div className="flex h-16 shrink-0 items-center justify-between border-b border-border px-6">
-              <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-light text-sm font-bold text-primary">
-                  {(selectedRoom.artisan?.name || "A").charAt(0)}
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-foreground">
-                    {selectedRoom.artisan?.name || selectedRoom.artisan?.business_name || "Artisan"}
-                  </h3>
-                  <span className="text-[11px] text-emerald-600 font-medium">Online</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Messages Scroll Area */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-3">
-              {isLoadingMessages ? (
-                <div className="flex justify-center p-8 text-xs text-muted">Loading messages...</div>
-              ) : messages.length === 0 ? (
-                <div className="flex flex-col items-center justify-center p-12 text-center text-xs text-muted">
-                  <p>Send a message to start coordinating with this provider.</p>
-                </div>
-              ) : (
-                messages.map((msg) => (
-                  <div key={msg.id} className="flex flex-col items-end">
-                    <div className="max-w-md rounded-2xl bg-primary px-4 py-2.5 text-xs text-white">
-                      {msg.content}
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-
-            {/* Input Bar */}
-            <form onSubmit={handleSendMessage} className="flex items-center gap-2 border-t border-border p-4">
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileUpload}
-                className="hidden"
-              />
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-zinc-400 hover:bg-zinc-100 hover:text-foreground"
-              >
-                <DocumentUpload size={20} color="currentColor" variant="Linear" />
-              </button>
-              <input
-                type="text"
-                placeholder="Type a message..."
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                className="flex-1 rounded-xl border border-border bg-zinc-50 px-4 py-2.5 text-xs text-foreground outline-none focus:border-primary"
-              />
-              <button
-                type="submit"
-                disabled={!inputText.trim()}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary text-white transition-opacity hover:opacity-90 disabled:opacity-40"
-              >
-                <Send2 size={18} color="#ffffff" variant="Bold" />
-              </button>
-            </form>
-          </div>
-        ) : (
-          <div className="hidden flex-1 flex-col items-center justify-center bg-zinc-50/50 p-12 text-center lg:flex">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-xs text-zinc-400">
-              <MessageQuestion size={32} color="#a1a1aa" variant="Linear" />
-            </div>
-            <h2 className="mt-4 text-base font-bold text-foreground">Select a conversation</h2>
-            <p className="mt-1 max-w-sm text-xs text-muted">
-              Send inquiries, ask for quotes, and coordinate arrival times directly with your chosen artisan.
-            </p>
-          </div>
-        )}
+        {/* ========================================================= */}
+        {/* MOBILE (< 768px): SINGLE VIEW (Chat List OR Chat Detail) */}
+        {/* ========================================================= */}
+        <div className="flex h-full w-full flex-col md:hidden">
+          {selectedId && activeConversation ? (
+            /* Active Conversation View Full Screen */
+            <ChatDetailView
+              conversation={activeConversation}
+              onBack={() => setSelectedId(null)}
+              showBack={true}
+              onSendMessage={handleSendMessage}
+            />
+          ) : (
+            /* Chat List View */
+            <ChatListView
+              conversations={filteredConversations}
+              selectedId={selectedId}
+              onSelect={(id) => setSelectedId(id)}
+              activeTab={activeTab}
+              onTabChange={(tab) => setTabChoice(tab)}
+              searchQuery={searchQuery}
+              onSearchChange={(q) => setSearchQuery(q)}
+              onBack={() => router.push("/dashboard")}
+              showBack={true}
+            />
+          )}
+        </div>
       </div>
     </DashboardShell>
   );
