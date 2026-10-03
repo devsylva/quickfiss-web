@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { TickCircle, CloseCircle } from "iconsax-react";
 import { WizardStepHeading } from "@/components/ui/WizardStepHeading";
@@ -16,62 +17,104 @@ const PAYMENT_OPTIONS = [
 ];
 
 import { bookingsApi } from "@/lib/api/bookings";
+import { chatApi } from "@/lib/api/chat";
+import { ApiError } from "@/lib/api/client";
+import { categories } from "@/lib/categories";
+import { useBookingDraftStore } from "@/store/useBookingDraftStore";
+
+/** "10:30:AM" (as stored in the wizard URL) -> "10:30:00" */
+function to24Hour(raw: string): string {
+  const [hourPart, minutePart = "00", meridiem = "AM"] = raw.split(":");
+  let hour = parseInt(hourPart, 10);
+  if (meridiem === "PM" && hour < 12) hour += 12;
+  if (meridiem === "AM" && hour === 12) hour = 0;
+  return `${String(hour).padStart(2, "0")}:${minutePart.padStart(2, "0")}:00`;
+}
 
 function BookingStep4Inner({ provider }: { provider: Provider }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [payment, setPayment] = useState("paystack");
-  const [showSuccess, setShowSuccess] = useState(false);
+  const [bookingId, setBookingId] = useState<string | null>(null);
+  const [photoWarning, setPhotoWarning] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [isMessaging, setIsMessaging] = useState(false);
+  const [error, setError] = useState<{ text: string; signIn: boolean; restart: boolean } | null>(null);
 
   const goBack = () => router.push(`/dashboard/booking/${provider.id}/step-3?${searchParams.toString()}`);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+
+    const description = searchParams.get("description");
+    const category = categories.find((c) => c.slug === searchParams.get("category"));
+    const location = searchParams.get("location");
+    const rawDate = searchParams.get("date");
+    const rawTime = searchParams.get("time");
+
+    if (!description || !category || !location || !rawDate || !rawTime || provider.userId === undefined) {
+      setError({
+        text: "Some booking details are missing. Please go back to the first step and fill them in again.",
+        signIn: false,
+        restart: true,
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     setError(null);
 
-    const rawDate = searchParams.get("date");
-    const dateFormatted = rawDate
-      ? new Date(rawDate).toISOString().split("T")[0]
-      : new Date().toISOString().split("T")[0];
-
-    const rawTime = searchParams.get("time");
-    let timeFormatted = "12:00:00";
-    if (rawTime) {
-      const parts = rawTime.split(":");
-      let hour = parseInt(parts[0], 10);
-      const minute = parts[1] || "00";
-      const meridiem = parts[2] || "AM";
-      if (meridiem === "PM" && hour < 12) hour += 12;
-      if (meridiem === "AM" && hour === 12) hour = 0;
-      timeFormatted = `${String(hour).padStart(2, "0")}:${minute.padStart(2, "0")}:00`;
-    }
-
-    const artisanId = parseInt(provider.id, 10) || 1;
-
     try {
-      await bookingsApi.createBooking({
-        artisian: artisanId,
-        service_name: provider.name,
-        service_description: searchParams.get("description") || "Service Request",
-        service_category: searchParams.get("category") || "Home Services",
-        location: searchParams.get("location") || "Lagos, Nigeria",
-        date: dateFormatted,
-        time: timeFormatted,
+      const booking = await bookingsApi.createBooking({
+        artisian: provider.userId,
+        service_name: category.label,
+        service_description: description,
+        service_category: category.apiName,
+        location,
+        date: new Date(rawDate).toISOString().split("T")[0],
+        time: to24Hour(rawTime),
         payment_option: payment,
       });
-      setShowSuccess(true);
-    } catch {
-      // In case user is in preview/demo mode or backend is in development, proceed to success
-      setShowSuccess(true);
+      setBookingId(booking.id);
+
+      // The booking exists now; a photo problem shouldn't make it look like it failed.
+      const photos = useBookingDraftStore.getState().photosFor(provider.id);
+      if (photos.length > 0) {
+        try {
+          await bookingsApi.uploadPhotos(booking.id, photos);
+        } catch {
+          setPhotoWarning("Your photos couldn't be uploaded, but the provider has your request.");
+        }
+      }
+      useBookingDraftStore.getState().clear();
+    } catch (err: unknown) {
+      if (err instanceof ApiError && err.status === 401) {
+        setError({ text: "Your session has expired. Please sign in to continue.", signIn: true, restart: false });
+      } else {
+        setError({
+          text: err instanceof Error ? err.message : "We couldn't place your booking. Please try again.",
+          signIn: false,
+          restart: false,
+        });
+      }
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const goToSummary = () => router.push(`/dashboard/booking/${provider.id}/summary?${searchParams.toString()}`);
+  const goToSummary = () => router.push(`/dashboard/booking/${provider.id}/summary?booking=${bookingId}`);
+
+  const messageProvider = async () => {
+    if (isMessaging) return;
+    setIsMessaging(true);
+    try {
+      const room = await chatApi.createChatRoom(Number(provider.id));
+      router.push(`/dashboard/chats?room=${room.id}`);
+    } catch {
+      router.push("/dashboard/chats");
+    }
+  };
 
   return (
     <div className="flex min-h-dvh w-full items-start justify-center bg-zinc-50/60 px-4 py-8 sm:px-6 sm:py-12 lg:py-16">
@@ -121,8 +164,18 @@ function BookingStep4Inner({ provider }: { provider: Provider }) {
           </div>
 
           {error && (
-            <div className="rounded-lg bg-red-50 p-3 text-xs text-red-600">
-              {error}
+            <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-medium text-red-700">
+              {error.text}{" "}
+              {error.signIn && (
+                <Link href="/sign-in" className="font-semibold underline">
+                  Sign in
+                </Link>
+              )}
+              {error.restart && (
+                <Link href={`/dashboard/booking/${provider.id}/step-1`} className="font-semibold underline">
+                  Start again
+                </Link>
+              )}
             </div>
           )}
 
@@ -141,15 +194,22 @@ function BookingStep4Inner({ provider }: { provider: Provider }) {
         </form>
       </div>
 
-      <Modal open={showSuccess}>
+      <Modal open={bookingId !== null}>
         <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50">
           <TickCircle size={32} color="#3d5afe" variant="Bold" />
         </div>
         <h2 className="mt-5 text-xl font-extrabold text-primary">Booking Successful</h2>
-        <p className="mt-2 text-sm text-muted">You have successfully booked a service provider</p>
+        <p className="mt-2 text-sm text-muted">
+          Your request has been sent to {provider.name}. You&rsquo;ll be notified when they respond.
+        </p>
+        {photoWarning && (
+          <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-medium text-amber-700">
+            {photoWarning}
+          </p>
+        )}
         <div className="mt-6 flex flex-col gap-3">
           <Button onClick={goToSummary}>View Summary</Button>
-          <Button variant="secondary" onClick={() => router.push(`/dashboard/provider/${provider.id}`)}>
+          <Button variant="secondary" isLoading={isMessaging} onClick={messageProvider}>
             Message Provider
           </Button>
         </div>

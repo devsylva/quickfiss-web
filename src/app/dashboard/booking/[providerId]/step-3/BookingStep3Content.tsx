@@ -5,12 +5,16 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { WizardStepHeading } from "@/components/ui/WizardStepHeading";
 import { MultiPhotoUpload } from "@/components/ui/MultiPhotoUpload";
 import { Button } from "@/components/ui/Button";
+import { useBookingDraftStore } from "@/store/useBookingDraftStore";
 import type { Provider } from "@/components/ui/ProviderCard";
 
 function BookingStep3Inner({ provider }: { provider: Provider }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [photoCount, setPhotoCount] = useState(0);
+  // Photos already chosen for this provider (kept across steps and refreshes).
+  const [initialPhotos] = useState(() => useBookingDraftStore.getState().photosFor(provider.id));
+  const [photoCount, setPhotoCount] = useState(initialPhotos.length);
+  const setPhotos = useBookingDraftStore((s) => s.setPhotos);
 
   const goToStep4 = () => {
     router.push(`/dashboard/booking/${provider.id}/step-4?${searchParams.toString()}`);
@@ -62,7 +66,13 @@ function BookingStep3Inner({ provider }: { provider: Provider }) {
           <div>
             <p className="mb-2 text-sm font-semibold text-foreground">Attach Photos</p>
             <p className="mb-4 text-xs text-muted">Upload clear images of the item or area that needs attention.</p>
-            <MultiPhotoUpload onChange={(files) => setPhotoCount(files.length)} />
+            <MultiPhotoUpload
+            initialFiles={initialPhotos}
+            onChange={(files) => {
+              setPhotoCount(files.length);
+              setPhotos(provider.id, files);
+            }}
+          />
           </div>
 
           <div className="mt-8">

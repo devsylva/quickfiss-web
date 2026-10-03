@@ -28,8 +28,9 @@ export default function ChooseRolePage() {
     try {
       await authApi.setUserType({ user_type: role === "provider" ? "artisan" : "client" });
 
-      const { user, setUser } = useAuthStore.getState();
+      const { user, setUser, setActiveRole } = useAuthStore.getState();
       if (user) setUser({ ...user, user_type: role === "provider" ? "artisan" : "client" });
+      setActiveRole(role === "provider" ? "provider" : "customer");
 
       router.push(role === "provider" ? "/provider-onboarding/step-1" : "/customer-onboarding/step-1");
     } catch (err: unknown) {

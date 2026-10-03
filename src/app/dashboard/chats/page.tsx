@@ -1,12 +1,15 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { Suspense, useEffect, useState, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { DashboardShell } from "@/components/layout/DashboardShell";
 import { Sms, SearchNormal1, MessageQuestion, Send2, DocumentUpload } from "iconsax-react";
 import { chatApi } from "@/lib/api/chat";
 import type { ChatRoom, ChatMessage } from "@/types/api";
 
-export default function ChatsPage() {
+function ChatsContent() {
+  // /dashboard/chats?room=<id> opens that conversation (used by the "Message" buttons).
+  const wantedRoom = useSearchParams().get("room");
   const [rooms, setRooms] = useState<ChatRoom[]>([]);
   const [selectedRoom, setSelectedRoom] = useState<ChatRoom | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -26,7 +29,7 @@ export default function ChatsPage() {
         if (isMounted) {
           setRooms(Array.isArray(data) ? data : []);
           if (data && data.length > 0) {
-            setSelectedRoom((current) => current || data[0]);
+            setSelectedRoom((current) => current || data.find((room) => room.id === wantedRoom) || data[0]);
           }
         }
       } catch {
@@ -40,7 +43,7 @@ export default function ChatsPage() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [wantedRoom]);
 
   useEffect(() => {
     let isMounted = true;
@@ -268,5 +271,13 @@ export default function ChatsPage() {
         )}
       </div>
     </DashboardShell>
+  );
+}
+
+export default function ChatsPage() {
+  return (
+    <Suspense fallback={null}>
+      <ChatsContent />
+    </Suspense>
   );
 }

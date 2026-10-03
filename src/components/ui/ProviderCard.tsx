@@ -11,9 +11,13 @@ export interface Review {
 }
 
 export interface Provider {
+  /** Artisan profile id (the number in /dashboard/provider/[id]). */
   id: string;
+  /** Account id of the provider; a booking's `artisian` field expects this. */
+  userId?: number;
   name: string;
   tagline?: string;
+  /** Empty when the provider hasn't set a price. */
   priceFrom: string;
   tags: string[];
   distance: string;
@@ -23,6 +27,7 @@ export interface Provider {
   image?: string;
   location?: string;
   contact?: string;
+  experienceText?: string;
   availabilityText?: string;
   languageText?: string;
   description?: string;
@@ -61,9 +66,11 @@ export const ProviderCard: React.FC<{ provider: Provider }> = ({ provider }) => 
     </div>
 
     <div className="mt-2 flex flex-wrap items-center gap-2">
-      <span className="rounded-full bg-primary-light px-3 py-1 text-xs font-medium text-primary">
-        From {provider.priceFrom}
-      </span>
+      {provider.priceFrom && (
+        <span className="rounded-full bg-primary-light px-3 py-1 text-xs font-medium text-primary">
+          From {provider.priceFrom}
+        </span>
+      )}
       {provider.tags.map((tag) => (
         <span key={tag} className="rounded-full bg-zinc-100 px-3 py-1 text-xs text-foreground">
           {tag}

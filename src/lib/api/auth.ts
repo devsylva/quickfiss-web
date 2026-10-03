@@ -5,6 +5,9 @@ import type {
   RegisterResponse,
   SetUserTypePayload,
   SetUserTypeResponse,
+  UpdateProfilePayload,
+  ChangePasswordPayload,
+  User,
   LoginPayload,
   AuthTokens,
   RefreshTokenPayload,
@@ -76,6 +79,48 @@ export const authApi = {
    */
   setUserType: (payload: SetUserTypePayload) => {
     return apiClient<SetUserTypeResponse>("/api/user/set-type/", {
+      method: "POST",
+      body: payload,
+      requiresAuth: true,
+    });
+  },
+
+  /**
+   * The signed-in user's account: name, type, verification and onboarding state
+   */
+  getMe: () => {
+    return apiClient<User>("/api/user/me/", {
+      method: "GET",
+      requiresAuth: true,
+    });
+  },
+
+  /**
+   * Update the signed-in user's name, phone number or profile picture
+   */
+  updateProfile: (payload: UpdateProfilePayload) => {
+    const { profile_picture, ...fields } = payload;
+    let body: FormData | Record<string, unknown> = fields;
+    if (profile_picture) {
+      const form = new FormData();
+      Object.entries(fields).forEach(([key, value]) => {
+        if (value !== undefined) form.append(key, String(value));
+      });
+      form.append("profile_picture", profile_picture);
+      body = form;
+    }
+    return apiClient<User>("/api/user/profile/", {
+      method: "PUT",
+      body,
+      requiresAuth: true,
+    });
+  },
+
+  /**
+   * Change the signed-in user's password
+   */
+  changePassword: (payload: ChangePasswordPayload) => {
+    return apiClient<{ message: string }>("/api/change-password/", {
       method: "POST",
       body: payload,
       requiresAuth: true,

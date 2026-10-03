@@ -8,9 +8,8 @@ import { Chip } from "@/components/ui/Chip";
 import { ProviderCard, type Provider } from "@/components/ui/ProviderCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { categories } from "@/lib/categories";
-import { sampleProviders } from "@/lib/sampleProviders";
-import { coreApi } from "@/lib/api";
-import type { SearchArtisanItem } from "@/types/api";
+import { artisansApi } from "@/lib/api/artisans";
+import { summaryToProvider } from "@/lib/artisanMapper";
 
 type Filter = "available" | "top-rated" | "book-only";
 
@@ -20,49 +19,43 @@ const filters: { value: Filter; label: string }[] = [
   { value: "book-only", label: "Book only" },
 ];
 
-function mapSearchItemToProvider(item: SearchArtisanItem): Provider {
-  return {
-    id: String(item.id),
-    name: item.business_name || item.full_name || `${item.first_name || ""} ${item.last_name || ""}`.trim() || "Artisan",
-    priceFrom: "₦10,000",
-    tags: ["Verified Artisan"],
-    distance: "Nearby",
-    isOpen: true,
-    rating: 4.8,
-    reviewCount: 8,
-    image: item.profile_picture,
-  };
-}
-
 function CategoryContent({ slug }: { slug: string }) {
   const router = useRouter();
   const address = useSearchParams().get("address");
   const [filter, setFilter] = useState<Filter>("available");
-  const [apiProviders, setApiProviders] = useState<Provider[]>([]);
+  const [sourceList, setSourceList] = useState<Provider[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   const category = categories.find((c) => c.slug === slug);
   const title = category?.label ?? slug;
 
   useEffect(() => {
-    const fetchCategoryArtisans = async () => {
-      setIsLoading(true);
+    let cancelled = false;
+    async function fetchCategoryArtisans() {
       try {
-        const results = await coreApi.searchArtisans({ category: title });
-        if (Array.isArray(results) && results.length > 0) {
-          setApiProviders(results.map(mapSearchItemToProvider));
-        }
-      } catch {
-        // Fallback to sampleProviders
+        const results = await artisansApi.list({ category: title });
+        if (cancelled) return;
+        setSourceList(Array.isArray(results) ? results.map(summaryToProvider) : []);
+        setLoadError(null);
+      } catch (err: unknown) {
+        if (!cancelled) setLoadError(err instanceof Error ? err.message : "We couldn't load providers.");
       } finally {
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
-    };
+    }
     fetchCategoryArtisans();
-  }, [slug, title]);
+    return () => {
+      cancelled = true;
+    };
+  }, [title, reloadKey]);
 
-  const defaultList = sampleProviders[slug] ?? [];
-  const sourceList = apiProviders.length > 0 ? apiProviders : defaultList;
+  const retry = () => {
+    setIsLoading(true);
+    setLoadError(null);
+    setReloadKey((k) => k + 1);
+  };
 
   let providers = sourceList;
   if (filter === "top-rated") {
@@ -109,14 +102,29 @@ function CategoryContent({ slug }: { slug: string }) {
           </p>
         </div>
 
-        {providers.length === 0 ? (
+        {loadError ? (
+          <div className="mt-8 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+            {loadError}{" "}
+            <button type="button" onClick={retry} className="font-semibold underline">
+              Try again
+            </button>
+          </div>
+        ) : providers.length === 0 ? (
           <div className="mt-8">
-            <EmptyState message="No Available service was found!" />
+            <EmptyState
+              message={
+                isLoading
+                  ? "Loading providers..."
+                  : sourceList.length > 0
+                    ? "No providers match this filter."
+                    : "No providers in this category yet."
+              }
+            />
           </div>
         ) : (
           <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:gap-8">
             {providers.map((provider) => (
-              <ProviderCard key={provider.name} provider={provider} />
+              <ProviderCard key={provider.id} provider={provider} />
             ))}
           </div>
         )}

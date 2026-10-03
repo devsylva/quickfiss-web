@@ -14,7 +14,20 @@ export const bookingsApi = {
   },
 
   /**
-   * List all bookings (global/admin)
+   * Attach photos to one of your bookings (JPG/PNG, up to 8 in total)
+   */
+  uploadPhotos: (bookingId: string, files: File[]) => {
+    const form = new FormData();
+    files.forEach((file) => form.append("photos", file));
+    return apiClient<Booking>(`/api/bookings/${bookingId}/photos/`, {
+      method: "POST",
+      body: form,
+      requiresAuth: true,
+    });
+  },
+
+  /**
+   * List all bookings (staff only)
    */
   getAllBookings: () => {
     return apiClient<Booking[]>("/api/bookings/all/", {

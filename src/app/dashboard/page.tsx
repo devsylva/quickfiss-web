@@ -7,48 +7,19 @@ import { DashboardShell } from "@/components/layout/DashboardShell";
 import { ProviderCard, type Provider } from "@/components/ui/ProviderCard";
 import { categories as defaultCategories } from "@/lib/categories";
 import { categoryIcons } from "@/lib/categoryIcons";
-import { sampleProviders } from "@/lib/sampleProviders";
-import { coreApi } from "@/lib/api";
-import type { FeedItem, SearchArtisanItem } from "@/types/api";
+import { artisansApi } from "@/lib/api/artisans";
+import { summaryToProvider } from "@/lib/artisanMapper";
+import { useAuthStore } from "@/store/useAuthStore";
+import { ProviderDashboardHome } from "@/components/dashboard/ProviderDashboardHome";
 
 const VISITED_KEY = "quickfiss_dashboard_visited";
-const featuredProviders = Object.values(sampleProviders).flat();
-
-function mapFeedItemToProvider(item: FeedItem): Provider {
-  return {
-    id: String(item.artisan_id || item.id),
-    name: item.job_title || "Verified Artisan",
-    tagline: item.description,
-    priceFrom: item.price ? `₦${Number(item.price).toLocaleString()}` : "₦10,000",
-    tags: item.tags ? item.tags.split(",").map((t) => t.trim()) : ["Artisan"],
-    distance: item.distance ? `${item.distance}km away` : "Nearby",
-    isOpen: item.availability_status ? item.availability_status.toLowerCase() === "open" : true,
-    rating: item.rating || 5.0,
-    reviewCount: item.likes || 12,
-    image: item.image,
-    description: item.description,
-  };
-}
-
-function mapSearchItemToProvider(item: SearchArtisanItem): Provider {
-  return {
-    id: String(item.id),
-    name: item.business_name || item.full_name || `${item.first_name || ""} ${item.last_name || ""}`.trim() || "Artisan",
-    priceFrom: "₦10,000",
-    tags: ["Verified Artisan"],
-    distance: "Nearby",
-    isOpen: true,
-    rating: 4.8,
-    reviewCount: 8,
-    image: item.profile_picture,
-  };
-}
 
 function DashboardHomeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const name = searchParams.get("name");
   const address = searchParams.get("address") ?? undefined;
+  const { activeRole, initAuth } = useAuthStore();
 
   const [isFirstVisit, setIsFirstVisit] = useState<boolean | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -56,7 +27,13 @@ function DashboardHomeContent() {
   const [searchResults, setSearchResults] = useState<Provider[] | null>(null);
   const [feedProviders, setFeedProviders] = useState<Provider[]>([]);
   const [isLoadingFeed, setIsLoadingFeed] = useState(true);
+  const [feedError, setFeedError] = useState<string | null>(null);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const hasChecked = useRef(false);
+
+  useEffect(() => {
+    initAuth();
+  }, [initAuth]);
 
   useEffect(() => {
     if (hasChecked.current) return;
@@ -65,16 +42,13 @@ function DashboardHomeContent() {
     setIsFirstVisit(!visited);
     if (!visited) localStorage.setItem(VISITED_KEY, "1");
 
-    // Fetch personalized feed from API
+    // Providers matching the customer's preferred categories (everyone, if none were chosen)
     const loadData = async () => {
-      setIsLoadingFeed(true);
       try {
-        const feed = await coreApi.getFeed();
-        if (Array.isArray(feed) && feed.length > 0) {
-          setFeedProviders(feed.map(mapFeedItemToProvider));
-        }
-      } catch {
-        // Fallback to sample providers gracefully if offline/unreachable
+        const providers = await artisansApi.list({ recommended: true, limit: 12 });
+        setFeedProviders(Array.isArray(providers) ? providers.map(summaryToProvider) : []);
+      } catch (err: unknown) {
+        setFeedError(err instanceof Error ? err.message : "We couldn't load providers right now.");
       } finally {
         setIsLoadingFeed(false);
       }
@@ -91,22 +65,12 @@ function DashboardHomeContent() {
     }
 
     setIsSearching(true);
+    setSearchError(null);
     try {
-      const results = await coreApi.searchArtisans({ q: query });
-      if (Array.isArray(results)) {
-        setSearchResults(results.map(mapSearchItemToProvider));
-      } else {
-        setSearchResults([]);
-      }
-    } catch {
-      // Local fallback search across sample providers
-      const lower = query.toLowerCase();
-      const filtered = featuredProviders.filter(
-        (p) =>
-          p.name.toLowerCase().includes(lower) ||
-          p.tags.some((t) => t.toLowerCase().includes(lower))
-      );
-      setSearchResults(filtered);
+      const results = await artisansApi.list({ q: query });
+      setSearchResults(Array.isArray(results) ? results.map(summaryToProvider) : []);
+    } catch (err: unknown) {
+      setSearchError(err instanceof Error ? err.message : "Search failed. Please try again.");
     } finally {
       setIsSearching(false);
     }
@@ -115,9 +79,15 @@ function DashboardHomeContent() {
   const goToCategory = (slug: string) =>
     router.push(`/dashboard/category/${slug}${address ? `?address=${encodeURIComponent(address)}` : ""}`);
 
-  const activeProviders = searchResults !== null
-    ? searchResults
-    : (feedProviders.length > 0 ? feedProviders : featuredProviders);
+  const activeProviders = searchResults !== null ? searchResults : feedProviders;
+
+  if (activeRole === "provider") {
+    return (
+      <DashboardShell address={address}>
+        <ProviderDashboardHome />
+      </DashboardShell>
+    );
+  }
 
   return (
     <DashboardShell address={address}>
@@ -148,6 +118,7 @@ function DashboardHomeContent() {
               onClick={() => {
                 setSearchQuery("");
                 setSearchResults(null);
+                setSearchError(null);
               }}
               className="text-xs text-muted hover:text-foreground mr-1"
             >
@@ -219,14 +190,22 @@ function DashboardHomeContent() {
             </span>
           </div>
 
-          {activeProviders.length === 0 ? (
+          {searchError || (searchResults === null && feedError) ? (
+            <div className="mt-8 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+              {searchError ?? feedError}
+            </div>
+          ) : activeProviders.length === 0 ? (
             <div className="mt-8 rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted">
-              No artisans found matching &ldquo;{searchQuery}&rdquo;. Try another search keyword.
+              {searchResults !== null
+                ? <>No providers found matching &ldquo;{searchQuery}&rdquo;. Try another search keyword.</>
+                : isLoadingFeed
+                  ? "Loading providers..."
+                  : "No providers are available yet. Browse a category above to check again soon."}
             </div>
           ) : (
             <div className="mt-4 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:gap-8">
               {activeProviders.map((provider) => (
-                <ProviderCard key={provider.id || provider.name} provider={provider} />
+                <ProviderCard key={provider.id} provider={provider} />
               ))}
             </div>
           )}

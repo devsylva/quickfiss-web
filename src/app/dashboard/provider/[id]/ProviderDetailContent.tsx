@@ -1,35 +1,107 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { DirectSend, Location, Call, Star1, TickCircle } from "iconsax-react";
+import { DirectSend, Location, Briefcase, Star1, TickCircle } from "iconsax-react";
 import { ChevronLeftIcon } from "@/components/icons";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { Textarea } from "@/components/ui/Textarea";
 import { StarRatingInput } from "@/components/ui/StarRatingInput";
 import { StarRatingDisplay } from "@/components/ui/StarRatingDisplay";
-import type { Provider } from "@/components/ui/ProviderCard";
+import { ArtisanStatus } from "@/components/ui/ArtisanStatus";
+import { useArtisan } from "@/hooks/useArtisan";
+import { bookingsApi } from "@/lib/api/bookings";
+import { chatApi } from "@/lib/api/chat";
+import { ApiError } from "@/lib/api/client";
+import { getStoredAccessToken } from "@/store/useAuthStore";
 
 type Tab = "about" | "reviews";
 
-export function ProviderDetailContent({ provider }: { provider: Provider }) {
+export function ProviderDetailContent({ providerId }: { providerId: string }) {
   const router = useRouter();
+  const { provider, status, error, reload } = useArtisan(providerId, { withReviews: true });
   const [tab, setTab] = useState<Tab>("about");
   const [showRateModal, setShowRateModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [stars, setStars] = useState(0);
   const [reviewText, setReviewText] = useState("");
+  const [rateError, setRateError] = useState<string | null>(null);
+  const [isRating, setIsRating] = useState(false);
+  const [isMessaging, setIsMessaging] = useState(false);
+  const [messageError, setMessageError] = useState<string | null>(null);
+  // A completed booking with this provider that the signed-in customer hasn't reviewed yet.
+  const [reviewableBookingId, setReviewableBookingId] = useState<string | null>(null);
 
-  const handleSubmitRating = () => {
-    if (stars === 0) return;
-    // TODO: wire up to the real reviews API once available.
-    setShowRateModal(false);
-    setShowSuccessModal(true);
-    setStars(0);
-    setReviewText("");
-    setTimeout(() => setShowSuccessModal(false), 2500);
+  const providerUserId = provider?.userId;
+  useEffect(() => {
+    if (providerUserId === undefined || !getStoredAccessToken()) return;
+    let cancelled = false;
+    async function findReviewableBooking() {
+      try {
+        const bookings = await bookingsApi.getMyBookings();
+        if (cancelled || !Array.isArray(bookings)) return;
+        const match = bookings.find(
+          (b) =>
+            b.role === "client" &&
+            b.artisian === providerUserId &&
+            b.booking_status === "completed" &&
+            !b.is_reviewed
+        );
+        setReviewableBookingId(match ? match.id : null);
+      } catch {
+        // Not signed in or offline: simply don't offer the review button.
+      }
+    }
+    findReviewableBooking();
+    return () => {
+      cancelled = true;
+    };
+  }, [providerUserId]);
+
+  if (!provider) {
+    return <ArtisanStatus status={status === "ready" ? "loading" : status} error={error} onRetry={reload} />;
+  }
+
+  const handleSubmitRating = async () => {
+    if (stars === 0 || !reviewableBookingId || isRating) return;
+    setIsRating(true);
+    setRateError(null);
+    try {
+      await bookingsApi.reviewBooking(reviewableBookingId, {
+        client_rating: stars,
+        client_review: reviewText.trim(),
+      });
+      setShowRateModal(false);
+      setShowSuccessModal(true);
+      setStars(0);
+      setReviewText("");
+      setReviewableBookingId(null);
+      reload();
+      setTimeout(() => setShowSuccessModal(false), 2500);
+    } catch (err: unknown) {
+      setRateError(err instanceof Error ? err.message : "We couldn't submit your review. Please try again.");
+    } finally {
+      setIsRating(false);
+    }
+  };
+
+  const handleMessage = async () => {
+    if (isMessaging) return;
+    setIsMessaging(true);
+    setMessageError(null);
+    try {
+      const room = await chatApi.createChatRoom(Number(provider.id));
+      router.push(`/dashboard/chats?room=${room.id}`);
+    } catch (err: unknown) {
+      if (err instanceof ApiError && err.status === 401) {
+        router.push("/sign-in");
+        return;
+      }
+      setMessageError(err instanceof Error ? err.message : "We couldn't open the chat. Please try again.");
+      setIsMessaging(false);
+    }
   };
 
   return (
@@ -97,7 +169,7 @@ export function ProviderDetailContent({ provider }: { provider: Provider }) {
                   <span className="flex -space-x-2">
                     {(provider.reviews ?? []).slice(0, 3).map((review, i) => (
                       <span
-                        key={review.name}
+                        key={`${review.name}-${i}`}
                         className="flex h-5 w-5 items-center justify-center rounded-full border-2 border-white text-[9px] font-bold text-primary"
                         style={{ backgroundColor: ["#c7ceff", "#a7b3ff", "#8b99ff"][i % 3] }}
                       >
@@ -128,10 +200,10 @@ export function ProviderDetailContent({ provider }: { provider: Provider }) {
                       </p>
                     </div>
                     <div>
-                      <p className="text-sm font-semibold text-primary">Contact</p>
+                      <p className="text-sm font-semibold text-primary">Experience</p>
                       <p className="mt-1 flex items-center gap-1 text-sm text-foreground">
-                        <Call size={14} color="#171717" variant="Bold" />
-                        {provider.contact}
+                        <Briefcase size={14} color="#171717" variant="Bold" />
+                        {provider.experienceText}
                       </p>
                     </div>
                   </div>
@@ -141,11 +213,11 @@ export function ProviderDetailContent({ provider }: { provider: Provider }) {
                   <div className="grid grid-cols-2 gap-x-4 gap-y-5">
                     <div>
                       <p className="text-sm font-semibold text-primary">Services</p>
-                      <p className="mt-1 text-sm text-foreground">{provider.tags.join(", ")}</p>
+                      <p className="mt-1 text-sm text-foreground">{provider.tags.join(", ") || "Not specified"}</p>
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-primary">Starting Price</p>
-                      <p className="mt-1 text-sm text-foreground">{provider.priceFrom}</p>
+                      <p className="mt-1 text-sm text-foreground">{provider.priceFrom || "Not specified"}</p>
                     </div>
                   </div>
 
@@ -171,18 +243,26 @@ export function ProviderDetailContent({ provider }: { provider: Provider }) {
                     <span className="text-lg font-bold text-foreground">{provider.rating.toFixed(1)}</span>
                     <span className="text-sm text-muted">({provider.reviewCount.toLocaleString()} ratings)</span>
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => setShowRateModal(true)}
-                    className="text-sm font-semibold text-primary"
-                  >
-                    Rate
-                  </button>
+                  {reviewableBookingId && (
+                    <button
+                      type="button"
+                      onClick={() => setShowRateModal(true)}
+                      className="text-sm font-semibold text-primary"
+                    >
+                      Rate
+                    </button>
+                  )}
                 </div>
 
+                {(provider.reviews ?? []).length === 0 && (
+                  <p className="mt-6 text-center text-sm text-muted">
+                    No reviews yet. Reviews appear here after customers complete a booking.
+                  </p>
+                )}
+
                 <div className="mt-2 flex flex-col divide-y divide-border">
-                  {(provider.reviews ?? []).map((review) => (
-                    <div key={review.name + review.timeAgo} className="py-4">
+                  {(provider.reviews ?? []).map((review, index) => (
+                    <div key={`${review.name}-${index}`} className="py-4">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-semibold text-primary">{review.name}</span>
                         <span className="text-xs text-muted">· {review.timeAgo}</span>
@@ -201,12 +281,17 @@ export function ProviderDetailContent({ provider }: { provider: Provider }) {
         </div>
 
         <div className="shrink-0 border-t border-border bg-white px-6 py-4 lg:px-12">
+          {messageError && (
+            <p className="mb-2 text-xs font-medium text-red-600 lg:max-w-2xl lg:mx-auto">{messageError}</p>
+          )}
           <div className="flex items-center gap-4 lg:max-w-2xl lg:mx-auto">
             <button
               type="button"
-              className="rounded-input border border-border px-5 py-3 text-sm font-semibold text-primary transition-colors hover:bg-zinc-50"
+              onClick={handleMessage}
+              disabled={isMessaging}
+              className="rounded-input border border-border px-5 py-3 text-sm font-semibold text-primary transition-colors hover:bg-zinc-50 disabled:opacity-60"
             >
-              Message
+              {isMessaging ? "Opening..." : "Message"}
             </button>
             <div className="flex-1">
               <Button onClick={() => router.push(`/dashboard/booking/${provider.id}/step-1`)}>Request Service</Button>
@@ -235,8 +320,12 @@ export function ProviderDetailContent({ provider }: { provider: Provider }) {
           <Textarea placeholder="Write your review..." value={reviewText} onChange={(e) => setReviewText(e.target.value)} />
         </div>
 
+        {rateError && (
+          <p className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-medium text-red-700">{rateError}</p>
+        )}
+
         <div className="mt-5">
-          <Button disabled={stars === 0} onClick={handleSubmitRating}>
+          <Button disabled={stars === 0} isLoading={isRating} onClick={handleSubmitRating}>
             Submit
           </Button>
         </div>

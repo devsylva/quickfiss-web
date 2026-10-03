@@ -11,10 +11,14 @@ import { isValidEmail } from "@/lib/validation";
 import { useRouter } from "next/navigation";
 import { authApi } from "@/lib/api/auth";
 import { useAuthStore } from "@/store/useAuthStore";
+import { roleForUser, routeAfterSignIn } from "@/lib/postLoginRoute";
 
 export default function SignInPage() {
   const router = useRouter();
   const setAuth = useAuthStore((s) => s.setAuth);
+  const setUser = useAuthStore((s) => s.setUser);
+  const setActiveRole = useAuthStore((s) => s.setActiveRole);
+  const clearAuth = useAuthStore((s) => s.clearAuth);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [touched, setTouched] = useState({ email: false, password: false });
@@ -37,7 +41,19 @@ export default function SignInPage() {
     try {
       const response = await authApi.login({ email, password });
       setAuth(response);
-      router.push("/dashboard");
+
+      // Login only returns tokens; load who this is so the app knows their name, role and progress.
+      let user;
+      try {
+        user = await authApi.getMe();
+      } catch {
+        clearAuth();
+        setApiError("You're signed in, but we couldn't load your account. Please try again.");
+        return;
+      }
+      setUser(user);
+      if (user.user_type === "client" || user.user_type === "artisan") setActiveRole(roleForUser(user));
+      router.push(routeAfterSignIn(user));
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : "Invalid email or password. Please try again.";
       setApiError(errorMsg);

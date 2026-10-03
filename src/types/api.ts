@@ -38,8 +38,27 @@ export interface User {
   email: string;
   first_name?: string;
   last_name?: string;
-  user_type?: "client" | "artisan" | string;
+  /** "client" (customer), "artisan" (provider), or null until the role is chosen. */
+  user_type?: "client" | "artisan" | string | null;
   is_verified?: boolean;
+  phone_number?: string;
+  profile_picture?: string | null;
+  /** False until the last onboarding step has been saved. */
+  onboarding_complete?: boolean;
+  created_at?: string | null;
+}
+
+export interface UpdateProfilePayload {
+  first_name?: string;
+  last_name?: string;
+  phone_number?: string;
+  profile_picture?: File | null;
+}
+
+export interface ChangePasswordPayload {
+  current_password: string;
+  new_password: string;
+  confirm_password: string;
 }
 
 export interface AuthTokens {
@@ -172,7 +191,8 @@ export interface SearchArtisanItem {
 
 // ==================== BOOKINGS ====================
 
-export type BookingStatus = "pending" | "accepted" | "rejected" | "completed" | string;
+/** Statuses the backend actually uses. */
+export type BookingStatus = "pending" | "active" | "completed" | "cancelled";
 
 export interface CreateBookingPayload {
   artisian: number; // Artisan user ID (note: backend spelling is 'artisian')
@@ -182,7 +202,6 @@ export interface CreateBookingPayload {
   location: string;
   date: string; // YYYY-MM-DD
   time: string; // HH:MM:SS
-  photo?: string[];
   payment_option: string;
 }
 
@@ -203,11 +222,70 @@ export interface Booking {
   client: number;
   artisian: number;
   created_at?: string;
+  /** Which side the signed-in user is on for this booking. */
+  role?: "client" | "artisan" | null;
+  artisan_name?: string | null;
+  artisan_profile_id?: number | null;
+  artisan_avatar?: string | null;
+  client_name?: string | null;
 }
 
 export interface ReviewBookingPayload {
   client_review: string;
   client_rating: number; // 1-5
+}
+
+// ==================== ARTISANS (PUBLIC) ====================
+
+/** A provider as shown on cards in browse / search / recommended lists. */
+export interface ArtisanSummary {
+  id: number; // artisan profile id (used in /dashboard/provider/[id])
+  user_id: number; // account id (what a booking's `artisian` expects)
+  name: string;
+  business_name: string;
+  first_name: string;
+  last_name: string;
+  profile_picture: string | null;
+  location: string;
+  services: string[];
+  categories: string[];
+  availability: string[];
+  service_years: string | null;
+  rating: number;
+  review_count: number;
+  min_price: string;
+  max_price: string;
+}
+
+export interface ArtisanDetail {
+  id: number;
+  user_id: number;
+  first_name: string;
+  last_name: string;
+  business_name: string;
+  bio: string;
+  business_about: string;
+  services: string[];
+  service_years: string | null;
+  language: string;
+  location: string;
+  availability: string[];
+  min_price: string;
+  max_price: string;
+  profile_picture: string | null;
+  certification: string | null;
+  rating: number;
+  review_count: number;
+  is_open: boolean;
+}
+
+export interface ArtisanReview {
+  id: string;
+  client_name: string;
+  client_avatar: string | null;
+  client_rating: number;
+  client_review: string | null;
+  created_at: string | null;
 }
 
 // ==================== CHAT ====================
@@ -306,7 +384,12 @@ export interface TransferResult {
 
 export interface InitializeDepositPayload {
   amount: number;
-  email: string;
+  /** Where Paystack sends the user after paying; must be one of our own origins. */
+  callback_url?: string;
+}
+
+export interface VerifyDepositResponse {
+  transaction: WalletTransaction;
 }
 
 export interface InitializeDepositResponse {

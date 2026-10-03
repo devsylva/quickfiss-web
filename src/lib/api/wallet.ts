@@ -8,6 +8,7 @@ import type {
   InitializeDepositPayload,
   InitializeDepositResponse,
   DirectDebitPayload,
+  VerifyDepositResponse,
 } from "@/types/api";
 
 export const walletApi = {
@@ -23,7 +24,17 @@ export const walletApi = {
   },
 
   /**
-   * List all wallets for the authenticated user
+   * The signed-in user's own wallet
+   */
+  getMyWallet: () => {
+    return apiClient<Wallet>("/api/billings/wallet/me/", {
+      method: "GET",
+      requiresAuth: true,
+    });
+  },
+
+  /**
+   * List every wallet (admin only)
    */
   getWallets: () => {
     return apiClient<Wallet[]>("/api/billings/wallets/", {
@@ -152,9 +163,9 @@ export const walletApi = {
   /**
    * Verify a Paystack deposit after returning from payment page
    */
-  verifyDeposit: (transactionId: string) => {
-    return apiClient<{ success: boolean; message: string; transaction: WalletTransaction }>(
-      `/api/billings/deposit/verify/${transactionId}/`,
+  verifyDeposit: (reference: string) => {
+    return apiClient<VerifyDepositResponse>(
+      `/api/billings/deposit/verify/${encodeURIComponent(reference)}/`,
       {
         method: "GET",
         requiresAuth: true,

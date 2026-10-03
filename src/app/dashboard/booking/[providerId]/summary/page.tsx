@@ -1,10 +1,6 @@
-import { notFound } from "next/navigation";
-import { getProviderById } from "@/lib/sampleProviders";
-import { BookingSummaryContent } from "./BookingSummaryContent";
+import { BookingFlow } from "../BookingFlow";
 
-export default async function BookingSummaryPage({ params }: { params: Promise<{ providerId: string }> }) {
+export default async function BookingPage({ params }: { params: Promise<{ providerId: string }> }) {
   const { providerId } = await params;
-  const provider = getProviderById(providerId);
-  if (!provider) notFound();
-  return <BookingSummaryContent provider={provider} />;
+  return <BookingFlow providerId={providerId} step="summary" />;
 }

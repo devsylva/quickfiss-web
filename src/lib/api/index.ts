@@ -1,5 +1,6 @@
 export * from "./client";
 export * from "./auth";
+export * from "./artisans";
 export * from "./onboarding";
 export * from "./core";
 export * from "./bookings";

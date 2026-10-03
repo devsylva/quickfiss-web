@@ -1,14 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { DashboardShell } from "@/components/layout/DashboardShell";
 import { Wallet2, CardAdd, ArrowUp, ArrowDown, CloseCircle } from "iconsax-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
+import { FormError } from "@/components/ui/FormError";
 import { walletApi } from "@/lib/api/wallet";
+import { ApiError } from "@/lib/api/client";
 import { useAuthStore } from "@/store/useAuthStore";
 import type { Wallet, WalletTransaction } from "@/types/api";
+
+const PAGE_SIZE = 20;
 
 function isCredit(tx: WalletTransaction) {
   if (tx.transaction_type === "deposit" || tx.transaction_type === "refund") return true;
@@ -16,41 +21,124 @@ function isCredit(tx: WalletTransaction) {
   return false;
 }
 
-export default function WalletPage() {
-  const { user, initAuth } = useAuthStore();
+function formatDate(iso: string) {
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime())
+    ? iso
+    : date.toLocaleString("en-NG", { dateStyle: "medium", timeStyle: "short" });
+}
+
+type Notice = { kind: "success" | "error" | "info"; text: string };
+
+function describeError(err: unknown, fallback: string) {
+  return err instanceof ApiError && err.status === 401
+    ? { text: "Your session has expired. Please sign in to continue.", signIn: true }
+    : { text: err instanceof Error ? err.message : fallback, signIn: false };
+}
+
+function WalletContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { initAuth } = useAuthStore();
   const [wallet, setWallet] = useState<Wallet | null>(null);
-  const [transactions] = useState<WalletTransaction[]>([]);
+  const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [loadError, setLoadError] = useState<{ text: string; signIn: boolean } | null>(null);
+  const [notice, setNotice] = useState<Notice | null>(null);
   const [showDepositModal, setShowDepositModal] = useState(false);
   const [depositAmount, setDepositAmount] = useState("5000");
   const [isDepositing, setIsDepositing] = useState(false);
   const [depositError, setDepositError] = useState<string | null>(null);
+  const handledReference = useRef<string | null>(null);
 
   useEffect(() => {
     initAuth();
   }, [initAuth]);
 
+  // Bumping this re-runs the loading effect (used by "Try again").
+  const [reloadKey, setReloadKey] = useState(0);
+
   useEffect(() => {
-    let isMounted = true;
-    async function fetchWallet() {
-      setIsLoading(true);
+    let cancelled = false;
+
+    async function load() {
       try {
-        const wallets = await walletApi.getWallets();
-        if (isMounted && Array.isArray(wallets) && wallets.length > 0) {
-          setWallet(wallets[0]);
-        }
-      } catch {
-        // Fallback gracefully for preview
+        const [myWallet, firstPage] = await Promise.all([
+          walletApi.getMyWallet(),
+          walletApi.getMyTransactions({ page: 1, limit: PAGE_SIZE }),
+        ]);
+        if (cancelled) return;
+        const list = Array.isArray(firstPage) ? firstPage : [];
+        setWallet(myWallet);
+        setTransactions(list);
+        setPage(1);
+        setHasMore(list.length === PAGE_SIZE);
+        setLoadError(null);
+      } catch (err: unknown) {
+        if (!cancelled) setLoadError(describeError(err, "We couldn't load your wallet. Please try again."));
       } finally {
-        if (isMounted) setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
     }
 
-    fetchWallet();
+    // Paystack sends the user back with ?reference=...; confirm the payment first.
+    // Clearing the query string afterwards re-runs this effect, which then loads fresh data.
+    async function confirmPayment(reference: string) {
+      try {
+        const { transaction } = await walletApi.verifyDeposit(reference);
+        if (transaction.status === "success") {
+          setNotice({ kind: "success", text: "Payment received. Your wallet has been credited." });
+        } else if (transaction.status === "failed") {
+          setNotice({ kind: "error", text: "That payment didn't go through, and you haven't been charged." });
+        } else {
+          setNotice({ kind: "info", text: "We haven't received that payment yet. Your balance will update once it clears." });
+        }
+      } catch (err: unknown) {
+        setNotice({ kind: "error", text: describeError(err, "We couldn't confirm that payment.").text });
+      } finally {
+        router.replace("/dashboard/wallet");
+      }
+    }
+
+    const reference = searchParams.get("reference") ?? searchParams.get("trxref");
+    if (reference) {
+      if (handledReference.current !== reference) {
+        handledReference.current = reference;
+        confirmPayment(reference);
+      }
+    } else {
+      load();
+    }
+
     return () => {
-      isMounted = false;
+      cancelled = true;
     };
-  }, []);
+  }, [searchParams, router, reloadKey]);
+
+  const retryLoad = () => {
+    setIsLoading(true);
+    setLoadError(null);
+    setReloadKey((k) => k + 1);
+  };
+
+  const loadMore = async () => {
+    if (isLoadingMore) return;
+    setIsLoadingMore(true);
+    try {
+      const next = await walletApi.getMyTransactions({ page: page + 1, limit: PAGE_SIZE });
+      const list = Array.isArray(next) ? next : [];
+      setTransactions((prev) => [...prev, ...list]);
+      setPage(page + 1);
+      setHasMore(list.length === PAGE_SIZE);
+    } catch (err: unknown) {
+      setNotice({ kind: "error", text: describeError(err, "Couldn't load more transactions.").text });
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
 
   const handleDeposit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,26 +148,22 @@ export default function WalletPage() {
     setIsDepositing(true);
     setDepositError(null);
 
-    const email = user?.email || "customer@quickfiss.com";
-
     try {
       const response = await walletApi.initializeDeposit({
         amount: amountNum,
-        email,
+        callback_url: `${window.location.origin}/dashboard/wallet`,
       });
 
       if (response && response.authorization_url) {
         // Redirect user to Paystack checkout URL
         window.location.href = response.authorization_url;
-      } else {
-        setShowDepositModal(false);
+        return;
       }
+      setDepositError("We couldn't start that payment. Please try again.");
     } catch (err: unknown) {
-      const errorMsg = err instanceof Error ? err.message : "Failed to initialize deposit. Please try again.";
-      setDepositError(errorMsg);
-    } finally {
-      setIsDepositing(false);
+      setDepositError(describeError(err, "Failed to initialize deposit. Please try again.").text);
     }
+    setIsDepositing(false);
   };
 
   const balanceDisplay = wallet
@@ -91,6 +175,30 @@ export default function WalletPage() {
       <div className="px-6 py-6 lg:px-10 lg:py-8 lg:max-w-5xl">
         <h1 className="text-2xl font-extrabold text-foreground sm:text-3xl">Wallet</h1>
         <p className="mt-1 text-sm text-muted">Manage your payments, refunds, and balance seamlessly.</p>
+
+        {notice && (
+          <div
+            className={`mt-6 flex items-start justify-between gap-3 rounded-xl border p-3 text-xs font-medium ${
+              notice.kind === "success"
+                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                : notice.kind === "error"
+                  ? "border-red-200 bg-red-50 text-red-700"
+                  : "border-amber-200 bg-amber-50 text-amber-700"
+            }`}
+          >
+            <span>{notice.text}</span>
+            <button type="button" onClick={() => setNotice(null)} aria-label="Dismiss" className="shrink-0 opacity-70 hover:opacity-100">
+              <CloseCircle size={16} color="currentColor" variant="Linear" />
+            </button>
+          </div>
+        )}
+
+        <FormError message={loadError?.text ?? null} signIn={loadError?.signIn} />
+        {loadError && !loadError.signIn && (
+          <button type="button" onClick={retryLoad} className="mt-2 text-xs font-semibold text-primary underline">
+            Try again
+          </button>
+        )}
 
         {/* Balance Card Grid on Desktop */}
         <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-3">
@@ -118,10 +226,12 @@ export default function WalletPage() {
               </button>
               <button
                 type="button"
-                className="flex items-center gap-2 rounded-xl bg-white/20 px-4 py-2.5 text-xs font-bold text-white backdrop-blur-xs transition-colors hover:bg-white/30"
+                disabled
+                title="Withdrawals are coming soon"
+                className="flex cursor-not-allowed items-center gap-2 rounded-xl bg-white/20 px-4 py-2.5 text-xs font-bold text-white/60 backdrop-blur-xs"
               >
                 <ArrowUp size={16} color="#ffffff" variant="Linear" />
-                Withdraw
+                Withdraw · Soon
               </button>
             </div>
           </div>
@@ -164,13 +274,41 @@ export default function WalletPage() {
                 <div key={tx.id} className="flex items-center justify-between p-4">
                   <div>
                     <p className="text-sm font-semibold text-foreground">{tx.description || tx.transaction_type}</p>
-                    <p className="text-xs text-muted">{tx.created_at}</p>
+                    <p className="text-xs text-muted">
+                      {formatDate(tx.created_at)}
+                      {tx.status !== "success" && (
+                        <span
+                          className={`ml-2 rounded-full px-2 py-0.5 text-[10px] font-semibold capitalize ${
+                            tx.status === "pending" ? "bg-amber-50 text-amber-700" : "bg-red-50 text-red-700"
+                          }`}
+                        >
+                          {tx.status}
+                        </span>
+                      )}
+                    </p>
                   </div>
-                  <span className={`text-sm font-bold ${isCredit(tx) ? "text-emerald-600" : "text-foreground"}`}>
+                  <span
+                    className={`text-sm font-bold ${
+                      tx.status !== "success" ? "text-muted line-through" : isCredit(tx) ? "text-emerald-600" : "text-foreground"
+                    }`}
+                  >
                     {isCredit(tx) ? "+" : "-"}₦{parseFloat(tx.amount).toLocaleString()}
                   </span>
                 </div>
               ))}
+            </div>
+          )}
+
+          {hasMore && (
+            <div className="mt-4 flex justify-center">
+              <button
+                type="button"
+                onClick={loadMore}
+                disabled={isLoadingMore}
+                className="rounded-xl border border-border px-4 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-zinc-50 disabled:opacity-60"
+              >
+                {isLoadingMore ? "Loading..." : "Load more"}
+              </button>
             </div>
           )}
         </div>
@@ -243,5 +381,13 @@ export default function WalletPage() {
         </form>
       </Modal>
     </DashboardShell>
+  );
+}
+
+export default function WalletPage() {
+  return (
+    <Suspense fallback={null}>
+      <WalletContent />
+    </Suspense>
   );
 }

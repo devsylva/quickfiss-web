@@ -158,6 +158,14 @@ export async function apiClient<T = unknown>(
   return handleResponse<T>(response);
 }
 
+/** Flattens { field: ["reason", ...] } style validation errors into plain sentences. */
+function collectReasons(errors: unknown): string[] {
+  if (!errors || typeof errors !== "object") return [];
+  return Object.values(errors as Record<string, unknown>)
+    .flat(Infinity as 1)
+    .filter((reason): reason is string => typeof reason === "string");
+}
+
 async function handleResponse<T>(response: Response): Promise<T> {
   const contentType = response.headers.get("content-type") || "";
   const isJson = contentType.includes("application/json");
@@ -187,7 +195,9 @@ async function handleResponse<T>(response: Response): Promise<T> {
       } else if (typeof payload === "object" && payload !== null) {
         const obj = payload as Record<string, unknown>;
         if (typeof obj.message === "string") {
-          errorMessage = obj.message;
+          // Backend errors often carry the useful reason in `errors` ({ field: ["reason"] }).
+          const reasons = collectReasons(obj.errors);
+          errorMessage = reasons.length > 0 ? `${obj.message} ${reasons.join(" ")}` : obj.message;
         } else if (typeof obj.detail === "string") {
           errorMessage = obj.detail;
         } else if (typeof obj.error === "string") {
