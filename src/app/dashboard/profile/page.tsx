@@ -198,7 +198,18 @@ export default function ProfilePage() {
   const displayName = fullName || user?.email?.split("@")[0] || "Your account";
   const displayEmail = user?.email ?? "";
   const initial = displayName.charAt(0).toUpperCase() || "Q";
-  const accountType = user?.user_type === "artisan" ? "Service provider" : user?.user_type === "client" ? "Customer" : null;
+  const hasClient = user?.is_client ?? user?.user_type === "client";
+  const hasArtisan = user?.is_artisan ?? user?.user_type === "artisan";
+  const providerLabel: Record<string, string> = {
+    approved: "Service provider",
+    pending: "Provider · in review",
+    rejected: "Provider · needs changes",
+    draft: "Provider · setup unfinished",
+  };
+  const accountTypes = [
+    ...(hasClient ? ["Customer"] : []),
+    ...(hasArtisan ? [providerLabel[user?.provider_status ?? "draft"] ?? "Service provider"] : []),
+  ];
 
   return (
     <DashboardShell>
@@ -233,11 +244,11 @@ export default function ProfilePage() {
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                 {user?.is_verified ? "Verified Account" : "Account Active"}
               </span>
-              {accountType && (
-                <span className="rounded-full bg-primary-light px-2.5 py-0.5 text-[11px] font-medium text-primary">
-                  {accountType}
+              {accountTypes.map((label) => (
+                <span key={label} className="rounded-full bg-primary-light px-2.5 py-0.5 text-[11px] font-medium text-primary">
+                  {label}
                 </span>
-              )}
+              ))}
             </div>
           </div>
         </div>

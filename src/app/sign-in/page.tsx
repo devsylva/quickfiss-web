@@ -52,8 +52,16 @@ export default function SignInPage() {
         return;
       }
       setUser(user);
-      if (user.user_type === "client" || user.user_type === "artisan") setActiveRole(roleForUser(user));
-      router.push(routeAfterSignIn(user));
+      let preferred: "customer" | "provider" | null = null;
+      try {
+        const stored = localStorage.getItem("quickfiss_active_role");
+        if (stored === "customer" || stored === "provider") preferred = stored;
+      } catch {
+        // storage can be unavailable; fall back to the account's own role
+      }
+      const role = roleForUser(user, preferred);
+      if (user.is_client || user.is_artisan || user.user_type) setActiveRole(role);
+      router.push(routeAfterSignIn(user, role));
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : "Invalid email or password. Please try again.";
       setApiError(errorMsg);

@@ -11,6 +11,7 @@ import { findCategoryByApiName } from "@/lib/categories";
 import { categoryIcons } from "@/lib/categoryIcons";
 import { bookingsApi } from "@/lib/api/bookings";
 import { formatBookingWhen } from "@/lib/formatBooking";
+import { formatNaira } from "@/lib/money";
 import { ApiError } from "@/lib/api/client";
 import type { Provider } from "@/components/ui/ProviderCard";
 import type { Booking } from "@/types/api";
@@ -22,6 +23,7 @@ type LoadState =
   | { status: "error"; message: string };
 
 const PAYMENT_LABELS: Record<string, string> = {
+  escrow: "Secure escrow",
   paystack: "Paystack",
   korapay: "Kora Pay",
   "after-service": "Payment after service",
@@ -135,6 +137,8 @@ function BookingSummaryInner({ provider }: { provider: Provider }) {
                 </Row>
                 <Row label="Date & Time">{formatBookingWhen(booking.date, booking.time)}</Row>
                 <Row label="Location">{booking.location}</Row>
+                {booking.budget && <Row label="Your budget">{formatNaira(booking.budget)}</Row>}
+                {booking.price && <Row label="Provider’s quote">{formatNaira(booking.price)}</Row>}
                 <Row label="Payment">{PAYMENT_LABELS[booking.payment_option] ?? booking.payment_option}</Row>
               </div>
 

@@ -5,16 +5,11 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { TickCircle, CloseCircle } from "iconsax-react";
 import { WizardStepHeading } from "@/components/ui/WizardStepHeading";
-import { RadioListItem } from "@/components/ui/RadioListItem";
+import { Input } from "@/components/ui/Input";
+import { ShieldTick } from "iconsax-react";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import type { Provider } from "@/components/ui/ProviderCard";
-
-const PAYMENT_OPTIONS = [
-  { value: "paystack", label: "Paystack" },
-  { value: "korapay", label: "Kora Pay" },
-  { value: "after-service", label: "Payment After Service" },
-];
 
 import { bookingsApi } from "@/lib/api/bookings";
 import { chatApi } from "@/lib/api/chat";
@@ -34,7 +29,7 @@ function to24Hour(raw: string): string {
 function BookingStep4Inner({ provider }: { provider: Provider }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [payment, setPayment] = useState("paystack");
+  const [budget, setBudget] = useState("");
   const [bookingId, setBookingId] = useState<string | null>(null);
   const [photoWarning, setPhotoWarning] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -74,7 +69,8 @@ function BookingStep4Inner({ provider }: { provider: Provider }) {
         location,
         date: new Date(rawDate).toISOString().split("T")[0],
         time: to24Hour(rawTime),
-        payment_option: payment,
+        payment_option: "escrow",
+        ...(budget ? { budget: Number(budget) } : {}),
       });
       setBookingId(booking.id);
 
@@ -141,7 +137,7 @@ function BookingStep4Inner({ provider }: { provider: Provider }) {
           <WizardStepHeading
             step={4}
             totalSteps={4}
-            title="Payment option"
+            title="Budget & payment"
             rightSlot={
               <button type="button" onClick={goBack} aria-label="Close" className="text-muted hover:text-foreground">
                 <CloseCircle size={22} color="currentColor" variant="Linear" />
@@ -149,17 +145,28 @@ function BookingStep4Inner({ provider }: { provider: Provider }) {
             }
           />
 
-          <div>
-            <p className="mb-3 text-sm font-semibold text-foreground">Select Payment Option</p>
-            <div className="flex flex-col gap-3">
-              {PAYMENT_OPTIONS.map((opt) => (
-                <RadioListItem
-                  key={opt.value}
-                  label={opt.label}
-                  selected={payment === opt.value}
-                  onClick={() => setPayment(opt.value)}
-                />
-              ))}
+          <div className="flex flex-col gap-5">
+            <Input
+              label="Your budget (optional)"
+              placeholder="e.g. 15000"
+              inputMode="numeric"
+              value={budget}
+              onChange={(e) => setBudget(e.target.value.replace(/[^\d]/g, ""))}
+            />
+            <p className="-mt-3 text-xs text-muted">
+              This is only a guide. {provider.name} will send you a quote you can accept or decline.
+            </p>
+
+            <div className="rounded-2xl bg-primary-light/60 p-4">
+              <div className="flex items-center gap-2 text-sm font-bold text-primary">
+                <ShieldTick size={18} color="#3d5afe" variant="Bold" />
+                Your payment is protected
+              </div>
+              <ol className="mt-2 list-decimal space-y-1 pl-5 text-xs leading-relaxed text-zinc-700">
+                <li>{provider.name} accepts and sends you a price.</li>
+                <li>You pay into escrow. Quickfiss holds the money safely.</li>
+                <li>Once the job is done and you confirm, they&rsquo;re paid.</li>
+              </ol>
             </div>
           </div>
 

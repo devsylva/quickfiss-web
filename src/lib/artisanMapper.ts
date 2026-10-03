@@ -43,8 +43,11 @@ export function summaryToProvider(item: ArtisanSummary): Provider {
     name: item.name,
     priceFrom: formatNaira(item.min_price),
     tags: item.services.slice(0, 3),
-    distance: item.location || "Location not set",
-    isOpen: true,
+    distance:
+      item.distance_km != null
+        ? `${item.distance_km} km away${item.location ? ` · ${item.location}` : ""}`
+        : item.location || "Location not set",
+    isOpen: item.is_open ?? true,
     rating: item.rating,
     reviewCount: item.review_count,
     image: item.profile_picture ?? undefined,

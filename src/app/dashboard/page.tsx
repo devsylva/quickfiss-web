@@ -11,6 +11,7 @@ import { artisansApi } from "@/lib/api/artisans";
 import { summaryToProvider } from "@/lib/artisanMapper";
 import { useAuthStore } from "@/store/useAuthStore";
 import { ProviderDashboardHome } from "@/components/dashboard/ProviderDashboardHome";
+import { ProviderGate } from "@/components/provider/ProviderGate";
 
 const VISITED_KEY = "quickfiss_dashboard_visited";
 
@@ -84,7 +85,9 @@ function DashboardHomeContent() {
   if (activeRole === "provider") {
     return (
       <DashboardShell address={address}>
-        <ProviderDashboardHome />
+        <ProviderGate>
+          <ProviderDashboardHome />
+        </ProviderGate>
       </DashboardShell>
     );
   }

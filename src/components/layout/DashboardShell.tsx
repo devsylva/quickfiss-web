@@ -16,6 +16,8 @@ import {
 } from "iconsax-react";
 
 import { useAuthStore } from "@/store/useAuthStore";
+import { useRoleSwitcher } from "@/hooks/useRoleSwitcher";
+import { useProviderOnline } from "@/hooks/useProviderOnline";
 
 interface DashboardShellProps {
   children: React.ReactNode;
@@ -34,7 +36,9 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({ children, addres
   const pathname = usePathname();
   const router = useRouter();
   const [expanded, setExpanded] = useState(false);
-  const { activeRole, setActiveRole, isOnline, setIsOnline } = useAuthStore();
+  const { activeRole } = useAuthStore();
+  const switchRole = useRoleSwitcher();
+  const { isOnline, setOnline } = useProviderOnline();
 
   const NavButton = ({
     href,
@@ -125,7 +129,7 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({ children, addres
               <div className="flex items-center rounded-xl bg-zinc-100 p-1 text-xs">
                 <button
                   type="button"
-                  onClick={() => setActiveRole("customer")}
+                  onClick={() => switchRole("customer")}
                   className={`flex-1 rounded-lg py-1.5 text-center font-bold transition-all ${
                     activeRole === "customer"
                       ? "bg-white text-foreground shadow-2xs"
@@ -136,7 +140,7 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({ children, addres
                 </button>
                 <button
                   type="button"
-                  onClick={() => setActiveRole("provider")}
+                  onClick={() => switchRole("provider")}
                   className={`flex-1 rounded-lg py-1.5 text-center font-bold transition-all ${
                     activeRole === "provider"
                       ? "bg-primary text-white shadow-2xs"
@@ -188,7 +192,7 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({ children, addres
           >
             <Location size={18} color="#3d5afe" variant="Bold" />
             <span className="max-w-[140px] truncate sm:max-w-[240px] lg:max-w-[280px]">
-              {address || (activeRole === "provider" ? "Service Area: Ikeja & Island" : "Set your location")}
+              {address || (activeRole === "provider" ? "Set your service area" : "Set your location")}
             </span>
             <ArrowDown2 size={14} color="#a1a1aa" />
           </button>
@@ -198,7 +202,7 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({ children, addres
             <div className="flex items-center rounded-xl bg-zinc-100 p-0.5 text-xs">
               <button
                 type="button"
-                onClick={() => setActiveRole("customer")}
+                onClick={() => switchRole("customer")}
                 className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition-all sm:text-xs ${
                   activeRole === "customer"
                     ? "bg-white text-foreground shadow-2xs"
@@ -209,7 +213,7 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({ children, addres
               </button>
               <button
                 type="button"
-                onClick={() => setActiveRole("provider")}
+                onClick={() => switchRole("provider")}
                 className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition-all sm:text-xs ${
                   activeRole === "provider"
                     ? "bg-primary text-white shadow-2xs"
@@ -225,7 +229,7 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({ children, addres
               <div className="hidden items-center gap-2 rounded-xl border border-border/80 bg-zinc-50/70 px-2.5 py-1 md:flex">
                 <button
                   type="button"
-                  onClick={() => setIsOnline(!isOnline)}
+                  onClick={() => setOnline(!isOnline)}
                   title={isOnline ? "Switch to Offline" : "Switch to Online"}
                   className={`relative flex h-5 w-9 cursor-pointer items-center rounded-full p-0.5 transition-colors duration-200 ${
                     isOnline ? "bg-primary" : "bg-zinc-300"

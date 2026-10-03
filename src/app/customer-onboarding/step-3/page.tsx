@@ -10,6 +10,7 @@ import { Modal } from "@/components/ui/Modal";
 import { FormError } from "@/components/ui/FormError";
 import { onboardingApi } from "@/lib/api/onboarding";
 import { ApiError } from "@/lib/api/client";
+import { useAuthStore } from "@/store/useAuthStore";
 
 function LocationPin() {
   return (
@@ -55,6 +56,8 @@ function CustomerOnboardingStep3Content() {
         address: address.trim(),
         ...(coordinates ? { location: coordinates } : {}),
       });
+      useAuthStore.getState().setActiveRole("customer");
+      await useAuthStore.getState().refreshUser();
       const params = new URLSearchParams({ address: address.trim() });
       if (name) params.set("name", name);
       router.push(`/dashboard?${params.toString()}`);

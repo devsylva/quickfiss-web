@@ -294,7 +294,14 @@ export function ProviderDetailContent({ providerId }: { providerId: string }) {
               {isMessaging ? "Opening..." : "Message"}
             </button>
             <div className="flex-1">
-              <Button onClick={() => router.push(`/dashboard/booking/${provider.id}/step-1`)}>Request Service</Button>
+              {provider.isOpen ? (
+                <Button onClick={() => router.push(`/dashboard/booking/${provider.id}/step-1`)}>Request Service</Button>
+              ) : (
+                <>
+                  <Button disabled>Currently offline</Button>
+                  <p className="mt-2 text-center text-xs text-muted">This provider isn&apos;t taking requests right now. Check back soon.</p>
+                </>
+              )}
             </div>
           </div>
         </div>

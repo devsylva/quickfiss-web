@@ -1,5 +1,5 @@
 import { apiClient } from "./client";
-import type { Booking, CreateBookingPayload, ReviewBookingPayload } from "@/types/api";
+import type { Booking, CreateBookingPayload, ProviderStats, ReviewBookingPayload } from "@/types/api";
 
 export const bookingsApi = {
   /**
@@ -57,31 +57,93 @@ export const bookingsApi = {
   },
 
   /**
-   * Artisan accepts a booking
+   * Provider accepts a request and quotes a price (in naira)
    */
-  acceptBooking: (bookingId: string) => {
+  acceptBooking: (bookingId: string, price: number) => {
     return apiClient<Booking>(`/api/bookings/${bookingId}/accept/`, {
       method: "POST",
+      body: { price },
       requiresAuth: true,
     });
   },
 
   /**
-   * Artisan rejects a booking
+   * Provider declines, or the customer cancels. Money already paid is refunded.
    */
-  rejectBooking: (bookingId: string) => {
+  rejectBooking: (bookingId: string, reason?: string) => {
     return apiClient<Booking>(`/api/bookings/${bookingId}/reject/`, {
       method: "POST",
+      body: { reason },
       requiresAuth: true,
     });
   },
 
   /**
-   * Mark a booking as complete
+   * Provider says the job is done (customer then confirms to release payment)
    */
   completeBooking: (bookingId: string) => {
     return apiClient<Booking>(`/api/bookings/${bookingId}/complete/`, {
       method: "POST",
+      requiresAuth: true,
+    });
+  },
+
+  /**
+   * Customer pays the quote into escrow, from the wallet or by card
+   */
+  payFromWallet: (bookingId: string) => {
+    return apiClient<Booking>(`/api/bookings/${bookingId}/pay/`, {
+      method: "POST",
+      body: { method: "wallet" },
+      requiresAuth: true,
+    });
+  },
+
+  payByCard: (bookingId: string, callbackUrl: string) => {
+    return apiClient<{ authorization_url: string; reference: string }>(`/api/bookings/${bookingId}/pay/`, {
+      method: "POST",
+      body: { method: "card", callback_url: callbackUrl },
+      requiresAuth: true,
+    });
+  },
+
+  /**
+   * After returning from Paystack: confirm the card payment
+   */
+  verifyPayment: (bookingId: string) => {
+    return apiClient<Booking>(`/api/bookings/${bookingId}/pay/verify/`, {
+      method: "POST",
+      requiresAuth: true,
+    });
+  },
+
+  /**
+   * Customer confirms the job is done: the provider is paid
+   */
+  confirmBooking: (bookingId: string) => {
+    return apiClient<Booking>(`/api/bookings/${bookingId}/confirm/`, {
+      method: "POST",
+      requiresAuth: true,
+    });
+  },
+
+  /**
+   * Customer reports a problem; the payment stays held until support decides
+   */
+  disputeBooking: (bookingId: string, reason: string) => {
+    return apiClient<Booking>(`/api/bookings/${bookingId}/dispute/`, {
+      method: "POST",
+      body: { reason },
+      requiresAuth: true,
+    });
+  },
+
+  /**
+   * Provider dashboard numbers
+   */
+  providerStats: () => {
+    return apiClient<ProviderStats>("/api/bookings/provider/stats/", {
+      method: "GET",
       requiresAuth: true,
     });
   },

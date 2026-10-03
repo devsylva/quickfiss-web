@@ -21,6 +21,8 @@ interface AuthState {
   setAuth: (tokens: AuthTokens) => void;
   setAccessToken: (token: string) => void;
   setUser: (user: User) => void;
+  /** Re-read the account from the server (roles and provider review status change outside this browser). */
+  refreshUser: () => Promise<User | null>;
   setActiveRole: (role: "customer" | "provider") => void;
   setIsOnline: (online: boolean) => void;
   clearAuth: () => void;
@@ -33,7 +35,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   isAuthenticated: false,
   isLoading: true,
-  activeRole: "provider",
+  activeRole: "customer",
   isOnline: true,
 
   setAuth: (tokens: AuthTokens) => {
@@ -62,6 +64,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   setUser: (user: User) => {
     Cookies.set(USER_KEY, JSON.stringify(user), { expires: 30 });
     set({ user });
+  },
+
+  refreshUser: async () => {
+    try {
+      const { authApi } = await import("@/lib/api/auth");
+      const user = await authApi.getMe();
+      get().setUser(user);
+      return user;
+    } catch {
+      return null;
+    }
   },
 
   setActiveRole: (role: "customer" | "provider") => {
@@ -109,16 +122,21 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }
     }
 
-    let savedRole: "customer" | "provider" = "provider";
+    let savedRole: "customer" | "provider" = "customer";
     let savedOnline = true;
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem("quickfiss_active_role");
       if (stored === "customer" || stored === "provider") {
         savedRole = stored;
-      } else if (parsedUser?.user_type === "client") {
-        savedRole = "customer";
-      } else {
+      } else if (parsedUser?.user_type === "artisan") {
         savedRole = "provider";
+      }
+      // Never open a side the account doesn't have (e.g. an old stored choice).
+      if (parsedUser) {
+        const hasClient = parsedUser.is_client ?? parsedUser.user_type === "client";
+        const hasArtisan = parsedUser.is_artisan ?? parsedUser.user_type === "artisan";
+        if (savedRole === "provider" && !hasArtisan && hasClient) savedRole = "customer";
+        if (savedRole === "customer" && !hasClient && hasArtisan) savedRole = "provider";
       }
 
       const storedOnline = localStorage.getItem("quickfiss_provider_online");

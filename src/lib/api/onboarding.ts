@@ -134,7 +134,7 @@ export const onboardingApi = {
       }
     }
 
-    return apiClient("/api/artisan/customization/", {
+    return apiClient<{ kyc_status?: "draft" | "pending" | "approved" | "rejected" }>("/api/artisan/customization/", {
       method: "PUT",
       body,
       requiresAuth: true,

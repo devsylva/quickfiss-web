@@ -7,7 +7,7 @@ import { ArrowLeft2, CloseCircle, Location } from "iconsax-react";
 interface ProviderLocationModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSaveLocation: (address: string) => void;
+  onSaveLocation: (address: string, coords?: { latitude: number; longitude: number }) => void;
   initialAddress?: string;
   avatarUrl?: string;
 }
@@ -16,12 +16,13 @@ export function ProviderLocationModal({
   isOpen,
   onClose,
   onSaveLocation,
-  initialAddress = "267 Opebi Road, Ikeja",
+  initialAddress = "",
   avatarUrl = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80",
 }: ProviderLocationModalProps) {
   const [showEnableDialog, setShowEnableDialog] = useState(true);
   const [address, setAddress] = useState(initialAddress);
   const [isLocating, setIsLocating] = useState(false);
+  const [coords, setCoords] = useState<{ latitude: number; longitude: number } | undefined>(undefined);
 
   if (!isOpen) return null;
 
@@ -29,9 +30,11 @@ export function ProviderLocationModal({
     setIsLocating(true);
     if (typeof navigator !== "undefined" && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        () => {
+        (position) => {
+          // There's no reverse-geocoding service wired up, so the street address is still typed in;
+          // the coordinates are what let customers see how far away a provider is.
+          setCoords({ latitude: position.coords.latitude, longitude: position.coords.longitude });
           setIsLocating(false);
-          setAddress("267 Opebi Road, Ikeja");
           setShowEnableDialog(false);
         },
         () => {
@@ -53,7 +56,7 @@ export function ProviderLocationModal({
   const handleContinue = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!address.trim()) return;
-    onSaveLocation(address.trim());
+    onSaveLocation(address.trim(), coords);
     onClose();
   };
 

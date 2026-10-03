@@ -13,6 +13,7 @@ import { TickCircle } from "iconsax-react";
 import { Modal } from "@/components/ui/Modal";
 import { useProviderOnboardingStore } from "@/store/useProviderOnboardingStore";
 import { onboardingApi } from "@/lib/api";
+import { useAuthStore } from "@/store/useAuthStore";
 
 const availabilityOptions = [
   { value: "MORNING", label: "Morning" },
@@ -31,6 +32,7 @@ export default function ProviderOnboardingStep7Page() {
   const [priceRange, setPriceRange] = useState<[number, number]>(store.priceRange);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [approved, setApproved] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const isValid = location.trim() !== "" && availability.length > 0;
@@ -65,8 +67,11 @@ export default function ProviderOnboardingStep7Page() {
       formData.append("max_price", String(priceRange[1]));
       if (store.certification) formData.append("certification", store.certification);
 
-      await onboardingApi.submitArtisanCustomization(formData);
+      const result = await onboardingApi.submitArtisanCustomization(formData);
       store.resetOnboarding();
+      useAuthStore.getState().setActiveRole("provider");
+      await useAuthStore.getState().refreshUser();
+      setApproved(result?.kyc_status === "approved");
       setShowSuccess(true);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to save your profile. Please try again.");
@@ -124,12 +129,16 @@ export default function ProviderOnboardingStep7Page() {
         <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary-light">
           <TickCircle size={32} color="#3d5afe" variant="Bold" />
         </div>
-        <h2 className="mt-5 text-xl font-extrabold text-foreground">Welcome to Quickfiss! 🎉</h2>
+        <h2 className="mt-5 text-xl font-extrabold text-foreground">
+          {approved ? "You're approved! 🎉" : "Thanks, we're reviewing your profile"}
+        </h2>
         <p className="mt-2 text-center text-sm text-muted">
-          Your artisan profile is ready. You can now start receiving booking requests and connecting with clients.
+          {approved
+            ? "Your provider profile is live. You can now receive booking requests from customers."
+            : "We check every provider's details before they can take jobs. We'll email you as soon as you're approved, usually within one business day."}
         </p>
-        <div className="mt-6">
-          <Button onClick={() => router.push("/dashboard")}>Go to Dashboard</Button>
+        <div className="mt-6 flex flex-col gap-2.5">
+          <Button variant="secondary" onClick={() => router.push("/dashboard")}>Go to Dashboard</Button>
         </div>
       </Modal>
     </div>

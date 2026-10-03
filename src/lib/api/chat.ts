@@ -24,6 +24,17 @@ export const chatApi = {
   },
 
   /**
+   * A provider opens a chat with the customer of one of their bookings
+   */
+  createRoomForBooking: (bookingId: string) => {
+    return apiClient<ChatRoom>("/api/chat/rooms/create/", {
+      method: "POST",
+      body: { booking_id: bookingId },
+      requiresAuth: true,
+    });
+  },
+
+  /**
    * Get all messages in a chat room
    */
   getRoomMessages: (roomId: string) => {

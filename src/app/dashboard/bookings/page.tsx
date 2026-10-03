@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Calendar, Location, TickCircle, CloseCircle, Star1, Image as ImageIcon } from "iconsax-react";
 import { DashboardShell } from "@/components/layout/DashboardShell";
 import { Chip } from "@/components/ui/Chip";
@@ -10,16 +11,20 @@ import { Modal } from "@/components/ui/Modal";
 import { Textarea } from "@/components/ui/Textarea";
 import { StarRatingInput } from "@/components/ui/StarRatingInput";
 import { bookingsApi } from "@/lib/api/bookings";
+import { walletApi } from "@/lib/api/wallet";
+import { formatNaira } from "@/lib/money";
 import { formatBookingWhen } from "@/lib/formatBooking";
 import { findCategoryByApiName } from "@/lib/categories";
 import type { Booking } from "@/types/api";
 import { useAuthStore } from "@/store/useAuthStore";
 import { ProviderBookingsView } from "@/components/dashboard/ProviderBookingsView";
+import { ProviderGate } from "@/components/provider/ProviderGate";
 
 type Tab = "all" | "upcoming" | "completed" | "cancelled";
 
-export default function BookingsPage() {
+function BookingsContent() {
   const { activeRole, initAuth } = useAuthStore();
+  const returnedFor = useSearchParams().get("pay");
   const [tab, setTab] = useState<Tab>("all");
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -32,6 +37,13 @@ export default function BookingsPage() {
   const [reviewText, setReviewText] = useState("");
   const [isReviewing, setIsReviewing] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [payTarget, setPayTarget] = useState<Booking | null>(null);
+  const [walletBalance, setWalletBalance] = useState<number | null>(null);
+  const [isPaying, setIsPaying] = useState<"wallet" | "card" | null>(null);
+  const [disputeTarget, setDisputeTarget] = useState<Booking | null>(null);
+  const [disputeText, setDisputeText] = useState("");
+  const [isConfirming, setIsConfirming] = useState<string | null>(null);
+  const [isDisputing, setIsDisputing] = useState(false);
 
   useEffect(() => {
     initAuth();
@@ -58,11 +70,28 @@ export default function BookingsPage() {
       }
     }
 
-    fetchBookings();
+    async function settleReturnedPayment() {
+      // Coming back from Paystack: confirm the card payment so the money moves into escrow.
+      if (!returnedFor) return;
+      try {
+        const updated = await bookingsApi.verifyPayment(returnedFor);
+        if (isMounted) {
+          setNotice(
+            updated.payment_status === "held"
+              ? "Payment received. Your money is held safely until the job is done."
+              : "We're still waiting for your payment to be confirmed. Refresh in a moment.",
+          );
+        }
+      } catch {
+        // the list below still shows the booking's real state
+      }
+    }
+
+    settleReturnedPayment().then(fetchBookings);
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [returnedFor]);
 
   const filteredBookings = bookings.filter((b) => {
     const status = (b.booking_status || "").toLowerCase();
@@ -123,6 +152,79 @@ export default function BookingsPage() {
     }
   };
 
+  const openPay = async (booking: Booking) => {
+    setActionError(null);
+    setPayTarget(booking);
+    setWalletBalance(null);
+    try {
+      const wallet = await walletApi.getMyWallet();
+      setWalletBalance(Number(wallet.balance));
+    } catch {
+      setWalletBalance(null);
+    }
+  };
+
+  const payFromWallet = async () => {
+    if (!payTarget || isPaying) return;
+    setIsPaying("wallet");
+    setActionError(null);
+    try {
+      replaceBooking(await bookingsApi.payFromWallet(payTarget.id));
+      setPayTarget(null);
+      setNotice("Payment received. Your money is held safely until the job is done.");
+    } catch (err: unknown) {
+      setActionError(err instanceof Error ? err.message : "We couldn't take that payment. Please try again.");
+    } finally {
+      setIsPaying(null);
+    }
+  };
+
+  const payByCard = async () => {
+    if (!payTarget || isPaying) return;
+    setIsPaying("card");
+    setActionError(null);
+    try {
+      const { authorization_url } = await bookingsApi.payByCard(
+        payTarget.id,
+        `${window.location.origin}/dashboard/bookings?pay=${payTarget.id}`,
+      );
+      window.location.assign(authorization_url);
+    } catch (err: unknown) {
+      setActionError(err instanceof Error ? err.message : "We couldn't start the payment. Please try again.");
+      setIsPaying(null);
+    }
+  };
+
+  const confirmDone = async (booking: Booking) => {
+    if (isConfirming) return;
+    setIsConfirming(booking.id);
+    setActionError(null);
+    try {
+      replaceBooking(await bookingsApi.confirmBooking(booking.id));
+      setNotice("Thanks! Your provider has been paid.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "We couldn't confirm this job. Please try again.");
+    } finally {
+      setIsConfirming(null);
+    }
+  };
+
+  const submitDispute = async () => {
+    if (!disputeTarget || isDisputing) return;
+    setIsDisputing(true);
+    setActionError(null);
+    try {
+      replaceBooking(await bookingsApi.disputeBooking(disputeTarget.id, disputeText.trim()));
+      setDisputeTarget(null);
+      setDisputeText("");
+      setNotice("We've paused the payment and will review your report.");
+    } catch (err: unknown) {
+      setActionError(err instanceof Error ? err.message : "We couldn't send your report. Please try again.");
+    } finally {
+      setIsDisputing(false);
+    }
+  };
+
   const submitReview = async () => {
     if (!reviewTarget || stars === 0 || isReviewing) return;
     setIsReviewing(true);
@@ -145,7 +247,9 @@ export default function BookingsPage() {
   if (activeRole === "provider") {
     return (
       <DashboardShell>
-        <ProviderBookingsView />
+        <ProviderGate>
+          <ProviderBookingsView />
+        </ProviderGate>
       </DashboardShell>
     );
   }
@@ -229,6 +333,37 @@ export default function BookingsPage() {
 
                   <p className="mt-3 text-xs leading-relaxed text-muted line-clamp-2">{booking.service_description}</p>
 
+                  {booking.price && status !== "cancelled" && (
+                    <div className="mt-3 flex items-center justify-between rounded-xl bg-zinc-50 px-3 py-2 text-xs">
+                      <span className="font-medium text-muted">
+                        {booking.payment_status === "unpaid"
+                          ? "Quote"
+                          : booking.payment_status === "held"
+                            ? "Held in escrow"
+                            : booking.payment_status === "disputed"
+                              ? "Payment on hold"
+                              : booking.payment_status === "refunded"
+                                ? "Refunded"
+                                : "Paid"}
+                      </span>
+                      <span className="text-sm font-extrabold text-primary">{formatNaira(booking.price)}</span>
+                    </div>
+                  )}
+                  {status === "completed" && booking.payment_status === "held" && (
+                    <p className="mt-2 text-[11px] leading-relaxed text-muted">
+                      Your provider says the job is done. Confirm to pay them
+                      {booking.auto_release_at
+                        ? `, or they're paid automatically on ${new Date(booking.auto_release_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
+                        : ""}
+                      .
+                    </p>
+                  )}
+                  {booking.payment_status === "disputed" && (
+                    <p className="mt-2 text-[11px] leading-relaxed text-muted">
+                      You reported a problem. We&rsquo;re reviewing it and will refund you or pay the provider.
+                    </p>
+                  )}
+
                   <div className="mt-4 flex flex-col gap-1.5 border-t border-border/60 pt-3 text-xs text-foreground">
                     <div className="flex items-center gap-1.5">
                       <Calendar size={14} color="#3d5afe" variant="Bold" />
@@ -256,6 +391,37 @@ export default function BookingsPage() {
                       >
                         View details
                       </Link>
+                    )}
+                    {status === "active" && booking.payment_status === "unpaid" && booking.price && (
+                      <button
+                        type="button"
+                        onClick={() => openPay(booking)}
+                        className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white transition-opacity hover:opacity-90"
+                      >
+                        Pay {formatNaira(booking.price)}
+                      </button>
+                    )}
+                    {status === "completed" && booking.payment_status === "held" && (
+                      <>
+                        <button
+                          type="button"
+                          disabled={isConfirming === booking.id}
+                          onClick={() => confirmDone(booking)}
+                          className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+                        >
+                          {isConfirming === booking.id ? "Confirming..." : "Confirm job done"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActionError(null);
+                            setDisputeTarget(booking);
+                          }}
+                          className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-700 transition-colors hover:bg-red-50"
+                        >
+                          Report a problem
+                        </button>
+                      </>
                     )}
                     {(status === "pending" || status === "active") && (
                       <button
@@ -299,6 +465,7 @@ export default function BookingsPage() {
         <h2 className="text-lg font-bold text-foreground">Cancel this booking?</h2>
         <p className="mt-2 text-sm text-muted">
           {cancelTarget?.artisan_name || "The provider"} will be told it&rsquo;s been cancelled.
+          {cancelTarget?.payment_status === "held" ? " Your payment will be refunded to your wallet." : ""}
         </p>
         {actionError && (
           <p className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-medium text-red-700">{actionError}</p>
@@ -309,6 +476,62 @@ export default function BookingsPage() {
           </Button>
           <Button variant="secondary" disabled={isCancelling} onClick={() => setCancelTarget(null)}>
             Keep booking
+          </Button>
+        </div>
+      </Modal>
+
+      <Modal open={payTarget !== null} position="bottom">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-bold text-foreground">Pay {payTarget ? formatNaira(payTarget.price) : ""}</h2>
+          <button type="button" onClick={() => setPayTarget(null)} aria-label="Close">
+            <span className="text-xl text-foreground">×</span>
+          </button>
+        </div>
+        <p className="mt-2 text-xs leading-relaxed text-muted">
+          Your money is held safely by Quickfiss and only released to {payTarget?.artisan_name || "your provider"} once you
+          confirm the job is done.
+        </p>
+        {actionError && (
+          <p className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-medium text-red-700">{actionError}</p>
+        )}
+        <div className="mt-5 flex flex-col gap-3">
+          <Button
+            isLoading={isPaying === "wallet"}
+            disabled={isPaying !== null || (walletBalance !== null && payTarget !== null && walletBalance < Number(payTarget.price))}
+            onClick={payFromWallet}
+          >
+            Pay from wallet{walletBalance !== null ? ` (${formatNaira(walletBalance)})` : ""}
+          </Button>
+          <Button variant="secondary" isLoading={isPaying === "card"} disabled={isPaying !== null} onClick={payByCard}>
+            Pay with card
+          </Button>
+          {walletBalance !== null && payTarget !== null && walletBalance < Number(payTarget.price) && (
+            <Link href="/dashboard/wallet" className="text-center text-xs font-semibold text-primary">
+              Add money to your wallet
+            </Link>
+          )}
+        </div>
+      </Modal>
+
+      <Modal open={disputeTarget !== null} position="bottom">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-bold text-foreground">Report a problem</h2>
+          <button type="button" onClick={() => setDisputeTarget(null)} aria-label="Close">
+            <span className="text-xl text-foreground">×</span>
+          </button>
+        </div>
+        <p className="mt-2 text-xs leading-relaxed text-muted">
+          Tell us what went wrong. The payment stays on hold while we look into it.
+        </p>
+        <div className="mt-4">
+          <Textarea placeholder="What went wrong?" value={disputeText} onChange={(e) => setDisputeText(e.target.value)} />
+        </div>
+        {actionError && (
+          <p className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-medium text-red-700">{actionError}</p>
+        )}
+        <div className="mt-5">
+          <Button disabled={disputeText.trim().length < 10} isLoading={isDisputing} onClick={submitDispute}>
+            Send report
           </Button>
         </div>
       </Modal>
@@ -340,5 +563,13 @@ export default function BookingsPage() {
         </div>
       </Modal>
     </DashboardShell>
+  );
+}
+
+export default function BookingsPage() {
+  return (
+    <Suspense fallback={null}>
+      <BookingsContent />
+    </Suspense>
   );
 }

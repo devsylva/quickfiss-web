@@ -27,10 +27,13 @@ export interface SetUserTypePayload {
   user_type: "client" | "artisan";
 }
 
+export type ProviderStatus = "none" | "draft" | "pending" | "approved" | "rejected";
+
 export interface SetUserTypeResponse {
   message: string;
   is_client: boolean;
   is_artisan: boolean;
+  provider_status?: ProviderStatus;
 }
 
 export interface User {
@@ -43,8 +46,16 @@ export interface User {
   is_verified?: boolean;
   phone_number?: string;
   profile_picture?: string | null;
-  /** False until the last onboarding step has been saved. */
+  /** An account can be a customer, a provider, or both. */
+  is_client?: boolean;
+  is_artisan?: boolean;
+  /** False until the last onboarding step has been saved (for the account's main role). */
   onboarding_complete?: boolean;
+  client_onboarding_complete?: boolean;
+  provider_onboarding_complete?: boolean;
+  /** Where the provider side is in review: none -> draft -> pending -> approved / rejected. */
+  provider_status?: ProviderStatus;
+  provider_rejection_reason?: string;
   created_at?: string | null;
 }
 
@@ -193,6 +204,7 @@ export interface SearchArtisanItem {
 
 /** Statuses the backend actually uses. */
 export type BookingStatus = "pending" | "active" | "completed" | "cancelled";
+export type PaymentStatus = "unpaid" | "held" | "released" | "refunded" | "disputed";
 
 export interface CreateBookingPayload {
   artisian: number; // Artisan user ID (note: backend spelling is 'artisian')
@@ -202,7 +214,9 @@ export interface CreateBookingPayload {
   location: string;
   date: string; // YYYY-MM-DD
   time: string; // HH:MM:SS
-  payment_option: string;
+  payment_option?: string;
+  /** What the customer expects to spend (optional). */
+  budget?: number | null;
 }
 
 export interface Booking {
@@ -219,6 +233,22 @@ export interface Booking {
   client_review: string | null;
   client_rating: number;
   is_reviewed: boolean;
+  budget?: string | null;
+  /** The provider's quote, set when they accept. Decimal string. */
+  price?: string | null;
+  payment_status: PaymentStatus;
+  /** What the provider receives after the platform's commission. */
+  provider_payout?: string | null;
+  commission_amount?: string;
+  accepted_at?: string | null;
+  paid_at?: string | null;
+  completed_at?: string | null;
+  released_at?: string | null;
+  /** When held money is paid out automatically if the customer doesn't respond. */
+  auto_release_at?: string | null;
+  cancelled_by?: "client" | "artisan" | "";
+  decline_reason?: string;
+  dispute_reason?: string;
   client: number;
   artisian: number;
   created_at?: string;
@@ -255,6 +285,9 @@ export interface ArtisanSummary {
   review_count: number;
   min_price: string;
   max_price: string;
+  is_open?: boolean;
+  /** Distance from the customer, when their location is known. */
+  distance_km?: number | null;
 }
 
 export interface ArtisanDetail {
@@ -366,7 +399,7 @@ export interface WalletTransaction {
   user: number;
   user_email: string;
   amount: string;
-  transaction_type: "deposit" | "withdrawal" | "transfer" | "payment" | "refund";
+  transaction_type: "deposit" | "withdrawal" | "transfer" | "payment" | "refund" | "escrow_hold" | "escrow_release";
   status: string;
   description: string;
   paystack_reference: string | null;
@@ -438,4 +471,59 @@ export interface CreateBillingPlanPayload {
 export interface UpdateBillingPlanPayload {
   price?: number;
   features?: string[];
+}
+
+
+// ==================== PROVIDER ====================
+
+export interface ProviderStats {
+  earned: number | string;
+  in_escrow: number | string;
+  /** Earnings that can be withdrawn right now. */
+  available: number | string;
+  wallet_balance: number | string;
+  new_requests: number;
+  active_jobs: number;
+  awaiting_confirmation: number;
+  completed_jobs: number;
+  rating: number | null;
+  review_count: number;
+  /** Percent, or null before the provider has answered any request. */
+  acceptance_rate: number | null;
+}
+
+export interface Bank {
+  name: string;
+  code: string;
+}
+
+export interface BankAccount {
+  id: number;
+  bank_name: string;
+  bank_code: string;
+  account_number: string;
+  account_name: string;
+}
+
+export interface ServiceArea {
+  location?: string;
+  latitude?: number | string | null;
+  longitude?: number | string | null;
+  service_radius_km?: number;
+}
+
+/** The signed-in provider's own profile (GET /api/artisan/profile/). */
+export interface MyProviderProfile {
+  id: number;
+  business_name: string;
+  kyc_status: ProviderStatus;
+  kyc_rejection_reason: string;
+  is_online: boolean;
+  location: string;
+  latitude: string | null;
+  longitude: string | null;
+  service_radius_km: number;
+  profile_completeness: number;
+  profile_missing: string[];
+  availability_data?: { id: number; name: string }[];
 }

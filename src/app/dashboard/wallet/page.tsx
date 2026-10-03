@@ -11,12 +11,13 @@ import { FormError } from "@/components/ui/FormError";
 import { walletApi } from "@/lib/api/wallet";
 import { ApiError } from "@/lib/api/client";
 import { useAuthStore } from "@/store/useAuthStore";
+import { PayoutPanel } from "@/components/wallet/PayoutPanel";
 import type { Wallet, WalletTransaction } from "@/types/api";
 
 const PAGE_SIZE = 20;
 
 function isCredit(tx: WalletTransaction) {
-  if (tx.transaction_type === "deposit" || tx.transaction_type === "refund") return true;
+  if (["deposit", "refund", "escrow_release"].includes(tx.transaction_type)) return true;
   if (tx.transaction_type === "transfer") return tx.description.startsWith("Transfer from");
   return false;
 }
@@ -39,7 +40,8 @@ function describeError(err: unknown, fallback: string) {
 function WalletContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { initAuth } = useAuthStore();
+  const { initAuth, user } = useAuthStore();
+  const isProvider = user?.provider_status === "approved";
   const [wallet, setWallet] = useState<Wallet | null>(null);
   const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
   const [page, setPage] = useState(1);
@@ -56,6 +58,8 @@ function WalletContent() {
 
   useEffect(() => {
     initAuth();
+    // Provider approval happens elsewhere, so check the account's latest status.
+    useAuthStore.getState().refreshUser();
   }, [initAuth]);
 
   // Bumping this re-runs the loading effect (used by "Try again").
@@ -224,15 +228,15 @@ function WalletContent() {
                 <CardAdd size={16} color="#3d5afe" variant="Bold" />
                 Add Funds
               </button>
-              <button
-                type="button"
-                disabled
-                title="Withdrawals are coming soon"
-                className="flex cursor-not-allowed items-center gap-2 rounded-xl bg-white/20 px-4 py-2.5 text-xs font-bold text-white/60 backdrop-blur-xs"
-              >
-                <ArrowUp size={16} color="#ffffff" variant="Linear" />
-                Withdraw · Soon
-              </button>
+              {isProvider && (
+                <a
+                  href="#payouts"
+                  className="flex items-center gap-2 rounded-xl bg-white/20 px-4 py-2.5 text-xs font-bold text-white backdrop-blur-xs transition-colors hover:bg-white/30"
+                >
+                  <ArrowUp size={16} color="#ffffff" variant="Linear" />
+                  Withdraw earnings
+                </a>
+              )}
             </div>
           </div>
 
@@ -246,10 +250,19 @@ function WalletContent() {
               </p>
             </div>
             <div className="mt-4 border-t border-border pt-3">
-              <span className="text-xs text-muted">Connected rails: Paystack, Kora Pay</span>
+              <span className="text-xs text-muted">Payments processed by Paystack</span>
             </div>
           </div>
         </div>
+
+        {isProvider && (
+          <PayoutPanel
+            onWithdrawn={(text) => {
+              setNotice({ kind: "success", text });
+              retryLoad();
+            }}
+          />
+        )}
 
         {/* Recent Transactions Section */}
         <div className="mt-10">

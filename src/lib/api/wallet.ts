@@ -8,6 +8,8 @@ import type {
   InitializeDepositPayload,
   InitializeDepositResponse,
   DirectDebitPayload,
+  Bank,
+  BankAccount,
   VerifyDepositResponse,
 } from "@/types/api";
 
@@ -183,4 +185,33 @@ export const walletApi = {
       requiresAuth: true,
     });
   },
+
+  // ---- provider payouts ----
+
+  /** Banks a payout can go to. */
+  getBanks: () => apiClient<Bank[]>("/api/billings/banks/", { method: "GET", requiresAuth: true }),
+
+  /** The name on an account, so the provider can check it before saving. */
+  resolveAccount: (accountNumber: string, bankCode: string) =>
+    apiClient<{ account_name: string }>("/api/billings/bank-accounts/resolve/", {
+      method: "POST",
+      body: { account_number: accountNumber, bank_code: bankCode },
+      requiresAuth: true,
+    }),
+
+  getBankAccounts: () => apiClient<BankAccount[]>("/api/billings/bank-accounts/", { method: "GET", requiresAuth: true }),
+
+  addBankAccount: (payload: { account_number: string; bank_code: string; bank_name: string }) =>
+    apiClient<BankAccount>("/api/billings/bank-accounts/", { method: "POST", body: payload, requiresAuth: true }),
+
+  removeBankAccount: (id: number) =>
+    apiClient<null>(`/api/billings/bank-accounts/${id}/`, { method: "DELETE", requiresAuth: true }),
+
+  /** Send earnings to a saved bank account. */
+  withdraw: (amount: number, bankAccountId: number) =>
+    apiClient<{ transaction_id: string; status: string; amount: number }>("/api/billings/withdraw/", {
+      method: "POST",
+      body: { amount, bank_account_id: bankAccountId },
+      requiresAuth: true,
+    }),
 };
