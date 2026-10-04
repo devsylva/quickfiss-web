@@ -17,7 +17,7 @@ import { useArtisan } from "@/hooks/useArtisan";
 import { bookingsApi } from "@/lib/api/bookings";
 import { chatApi } from "@/lib/api/chat";
 import { ApiError } from "@/lib/api/client";
-import { getStoredAccessToken } from "@/store/useAuthStore";
+import { getStoredAccessToken, useAuthStore } from "@/store/useAuthStore";
 
 type Tab = "about" | "reviews";
 
@@ -37,6 +37,9 @@ export function ProviderDetailContent({ providerId }: { providerId: string }) {
   const [reviewableBookingId, setReviewableBookingId] = useState<string | null>(null);
 
   const providerUserId = provider?.userId;
+  // An account that is both customer and provider can't message or book itself.
+  const myId = useAuthStore((st) => st.user?.id);
+  const isMine = myId !== undefined && providerUserId !== undefined && Number(myId) === providerUserId;
   useEffect(() => {
     if (providerUserId === undefined || !getStoredAccessToken()) return;
     let cancelled = false;
@@ -290,6 +293,12 @@ export function ProviderDetailContent({ providerId }: { providerId: string }) {
           {messageError && (
             <p className="mb-2 text-xs font-medium text-red-600 lg:max-w-2xl lg:mx-auto">{messageError}</p>
           )}
+          {isMine ? (
+            <p className="rounded-xl bg-zinc-50 p-3 text-center text-sm text-muted lg:max-w-2xl lg:mx-auto">
+              This is your own provider profile. Switch to Provider to manage it.
+            </p>
+          ) : (
+            <>
           <div className="flex items-center gap-4 lg:max-w-2xl lg:mx-auto">
             <button
               type="button"
@@ -310,6 +319,8 @@ export function ProviderDetailContent({ providerId }: { providerId: string }) {
               )}
             </div>
           </div>
+            </>
+          )}
         </div>
       </div>
 
