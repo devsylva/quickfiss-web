@@ -56,6 +56,24 @@ export default function ProviderOnboardingStep3Page() {
     setIsSubmitting(true);
 
     try {
+      // Check every photo is still readable, and say which one isn't (steps 1 and 2 may have been
+      // picked a while ago, and a phone can lose a camera photo in the meantime).
+      const checks: [string, File | null, "profilePicture" | "proofOfAddress" | null, string][] = [
+        ["profile photo", store.profilePicture, "profilePicture", "step 1"],
+        ["proof of address", store.proofOfAddress, "proofOfAddress", "step 2"],
+        ["ID (front)", frontFile, null, "this step"],
+        ["ID (back)", backFile, null, "this step"],
+      ];
+      for (const [label, file, key, where] of checks) {
+        if (!file) continue;
+        try {
+          await file.arrayBuffer();
+        } catch {
+          if (key) store.setKycStep1({ [key]: null } as never);
+          throw new Error(`Your ${label} couldn't be read, so we removed it. Please choose it again on ${where}.`);
+        }
+      }
+
       const formData = new FormData();
       formData.append("first_name", store.firstName);
       formData.append("last_name", store.lastName);

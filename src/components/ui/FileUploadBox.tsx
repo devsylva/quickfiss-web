@@ -3,6 +3,7 @@
 import { useId, useRef, useState } from "react";
 import Image from "next/image";
 import { GalleryAdd } from "iconsax-react";
+import { prepareUpload } from "@/lib/prepareUpload";
 
 interface FileUploadBoxProps {
   label?: string;
@@ -21,10 +22,26 @@ export const FileUploadBox: React.FC<FileUploadBoxProps> = ({
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0] ?? null;
-    onFileSelect?.(file);
-    setPreview(file ? URL.createObjectURL(file) : null);
+  const [error, setError] = useState<string | null>(null);
+
+  // Copy the file into memory right away so it is still readable when the form is finally submitted.
+  const handleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const picked = e.target.files?.[0] ?? null;
+    setError(null);
+    if (!picked) {
+      onFileSelect?.(null);
+      setPreview(null);
+      return;
+    }
+    try {
+      const safe = await prepareUpload(picked);
+      onFileSelect?.(safe);
+      setPreview(URL.createObjectURL(safe));
+    } catch (err: unknown) {
+      onFileSelect?.(null);
+      setPreview(null);
+      setError(err instanceof Error ? err.message : "We couldn't read that file. Please pick it again.");
+    }
   };
 
   return (
@@ -51,6 +68,7 @@ export const FileUploadBox: React.FC<FileUploadBoxProps> = ({
         onChange={handleChange}
         className="hidden"
       />
+      {error && <p className="mt-2 text-xs font-medium text-red-600">{error}</p>}
       {helperText && <p className="mt-2 text-xs text-muted">{helperText}</p>}
     </div>
   );
