@@ -1,3 +1,4 @@
+import { prepareFormData } from "@/lib/prepareUpload";
 import { getStoredAccessToken, getStoredRefreshToken, useAuthStore } from "@/store/useAuthStore";
 
 const API_BASE_URL = (
@@ -66,18 +67,24 @@ export async function apiClient<T = unknown>(
 
   let requestBody: BodyInit | null | undefined = undefined;
   if (isFormData) {
-    requestBody = body as FormData;
+    requestBody = await prepareFormData(body as FormData);
   } else if (body && typeof body === "object") {
     requestBody = JSON.stringify(body);
   } else if (typeof body === "string") {
     requestBody = body;
   }
 
-  const response = await fetch(url, {
-    ...restOptions,
-    headers,
-    body: requestBody,
-  });
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      ...restOptions,
+      headers,
+      body: requestBody,
+    });
+  } catch {
+    // The request never got an answer: offline, a dropped mobile connection, or a blocked upload.
+    throw new ApiError("We couldn't reach Quickfiss. Check your internet connection and try again.", 0);
+  }
 
   // Handle 401 Unauthorized with token refresh
   if (response.status === 401 && requiresAuth) {
