@@ -14,7 +14,6 @@ export function LandingNavbar() {
   const navLinks = [
     { label: "Services", href: "/#categories" },
     { label: "How It Works", href: "/#how-it-works" },
-    { label: "Why Quickfiss", href: "/#features" },
     { label: "About Us", href: "/about" },
     { label: "Contact", href: "/contact" },
   ];

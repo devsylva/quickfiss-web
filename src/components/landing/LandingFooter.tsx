@@ -226,15 +226,6 @@ export function LandingFooter() {
               </li>
               <li>
                 <Link
-                  href="/#features"
-                  onClick={(e) => handleLinkClick(e, "/#features")}
-                  className="hover:text-white transition-colors"
-                >
-                  KYC & Safety Guarantee
-                </Link>
-              </li>
-              <li>
-                <Link
                   href="/contact"
                   onClick={(e) => handleLinkClick(e, "/contact")}
                   className="hover:text-white transition-colors"
