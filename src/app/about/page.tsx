@@ -6,7 +6,7 @@ import { LandingFooter } from "@/components/landing/LandingFooter";
 
 export const metadata = {
   title: "About Us | Quickfiss - Africa's Trusted Artisan Network",
-  description: "Learn how Quickfiss is organizing and empowering skilled African artisans through background verification, transparent escrow payments, and modern tools.",
+  description: "Learn how Quickfiss is organizing and empowering skilled African artisans through background verification, transparent payments, and modern tools.",
 };
 
 export default function AboutPage() {
@@ -18,7 +18,7 @@ export default function AboutPage() {
     },
     {
       title: "Financial Protection for All",
-      description: "Through our milestone escrow payment system with Paystack, clients never pay for sub-standard work, and honest artisans never worry about unpaid invoices.",
+      description: "Because payment is held until a job is confirmed, clients never pay for sub-standard work, and honest artisans never worry about unpaid invoices.",
       icon: <Card size={26} color="#3d5afe" variant="Bold" />,
     },
     {
@@ -35,7 +35,7 @@ export default function AboutPage() {
 
   const milestones = [
     { year: "2024", title: "Quickfiss Founded", description: "Launched in Lagos with 50 vetted automotive and plumbing artisans." },
-    { year: "2025", title: "Escrow Wallet Launch", description: "Integrated milestone-based escrow payments powered by Paystack." },
+    { year: "2025", title: "Protected Payments Launch", description: "Integrated held payments powered by Paystack." },
     { year: "2026", title: "10,000+ Verified Pros", description: "Expanded to multiple major African hubs with over 15,000 completed bookings." },
   ];
 
@@ -90,7 +90,7 @@ export default function AboutPage() {
                   For decades, households and small businesses relied on unverified recommendations, arbitrary pricing, and zero accountability when things went wrong. Talented artisans were equally vulnerable to delayed payments and customer skepticism.
                 </p>
                 <p className="mt-3 text-sm leading-relaxed text-muted sm:text-base">
-                  Quickfiss combines digital identity checks, secure milestone escrow, and in-app instant chat to create a win-win ecosystem. We give customers complete peace of mind and provide vetted artisans with predictable, dignified livelihoods.
+                  Quickfiss combines digital identity checks, held payments, and in-app instant chat to create a win-win ecosystem. We give customers complete peace of mind and provide vetted artisans with predictable, dignified livelihoods.
                 </p>
 
                 <div className="mt-6 flex flex-col gap-2.5">
@@ -100,7 +100,7 @@ export default function AboutPage() {
                   </div>
                   <div className="flex items-center gap-2.5 text-sm font-semibold text-foreground">
                     <TickCircle size={20} color="#059669" variant="Bold" />
-                    <span>Paystack-secured escrow payments</span>
+                    <span>Paystack-secured payments</span>
                   </div>
                   <div className="flex items-center gap-2.5 text-sm font-semibold text-foreground">
                     <TickCircle size={20} color="#059669" variant="Bold" />

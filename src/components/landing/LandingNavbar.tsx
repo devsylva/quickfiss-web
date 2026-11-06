@@ -296,7 +296,7 @@ export function LandingNavbar() {
               {/* Trust Badge Indicator */}
               <div className="mt-4 flex items-center justify-center gap-2 text-center text-xs text-muted">
                 <ShieldTick size={16} color="#059669" variant="Bold" />
-                <span>100% KYC Verified & Paystack Escrow Protected</span>
+                <span>100% KYC Verified & Paystack-Secured Payments</span>
               </div>
             </div>
           </motion.div>

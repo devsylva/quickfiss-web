@@ -17,6 +17,8 @@ import type { Wallet, WalletTransaction } from "@/types/api";
 const PAGE_SIZE = 20;
 
 function isCredit(tx: WalletTransaction) {
+  // A refund sent back to the card or bank never touched the wallet balance.
+  if (tx.transaction_type === "refund" && tx.metadata?.destination === "original") return false;
   if (["deposit", "refund", "escrow_release"].includes(tx.transaction_type)) return true;
   if (tx.transaction_type === "transfer") return tx.description.startsWith("Transfer from");
   return false;
@@ -217,7 +219,7 @@ function WalletContent() {
               <span className="text-3xl font-extrabold lg:text-4xl">
                 {isLoading ? "Loading..." : balanceDisplay}
               </span>
-              <p className="mt-1 text-xs text-white/70">Quickfiss Escrow Protected</p>
+              <p className="mt-1 text-xs text-white/70">Protected payments</p>
             </div>
             <div className="mt-6 flex flex-wrap gap-3">
               <button
@@ -246,7 +248,7 @@ function WalletContent() {
                 Payment Security
               </span>
               <p className="mt-2 text-sm leading-relaxed text-foreground">
-                Your money remains secure in escrow until service completion is confirmed.
+                Your payment is held until service completion is confirmed.
               </p>
             </div>
             <div className="mt-4 border-t border-border pt-3">

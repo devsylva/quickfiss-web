@@ -50,8 +50,8 @@ export function LandingFooter() {
               <Card size={22} color="#3d5afe" variant="Bold" />
             </div>
             <div>
-              <p className="text-xs font-semibold text-white">Escrow Payment Protection</p>
-              <p className="text-[11px] text-zinc-400">Funds released only upon job satisfaction</p>
+              <p className="text-xs font-semibold text-white">Protected Payments</p>
+              <p className="text-[11px] text-zinc-400">Payout held until the job is confirmed</p>
             </div>
           </div>
 
@@ -95,11 +95,11 @@ export function LandingFooter() {
             <div className="mt-6 flex flex-col gap-2 text-xs text-zinc-400">
               <div className="flex items-center gap-2">
                 <Location size={16} color="#71717a" variant="Bold" />
-                <span>Victoria Island, Lagos, Nigeria</span>
+                <span>163 Oboro Road, Rumudara, Port Harcourt, Rivers State, Nigeria</span>
               </div>
               <div className="flex items-center gap-2">
                 <Call size={16} color="#71717a" variant="Bold" />
-                <span>+234 1 800 QUICK (784-253)</span>
+                <span>0816049262</span>
               </div>
               <div className="flex items-center gap-2">
                 <Sms size={16} color="#71717a" variant="Bold" />
@@ -212,7 +212,16 @@ export function LandingFooter() {
                   onClick={(e) => handleLinkClick(e, "/terms")}
                   className="hover:text-white transition-colors"
                 >
-                  Terms of Service
+                  Terms &amp; Conditions
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/refund-policy"
+                  onClick={(e) => handleLinkClick(e, "/refund-policy")}
+                  className="hover:text-white transition-colors"
+                >
+                  Refund Policy
                 </Link>
               </li>
               <li>

@@ -115,14 +115,14 @@ const faqs = [
       "Every artisan on Quickfiss undergoes mandatory multi-tiered KYC verification. We verify their Government-issued Identity (National ID, Passport, or Driver's License), complete residential address with utility proof, and validate past work references and skill certifications before granting them access to client requests.",
   },
   {
-    question: "How does Escrow Payment Protection keep my money safe?",
+    question: "How are my payments protected?",
     answer:
-      "When you book a service, your payment is securely held in an escrow wallet powered by Paystack. The funds are never transferred to the artisan until the job is completed, inspected, and you approve the final delivery.",
+      "When you book a service, your payment is collected through Paystack and held by Quickfiss. The provider is paid only after you confirm the job is complete, or after a 48-hour review window passes without a problem being reported.",
   },
   {
     question: "What if I am not satisfied with the work done?",
     answer:
-      "Your funds remain in escrow. If there is any dissatisfaction, you can request a complimentary revision from the artisan through our in-app chat or escalate to Quickfiss Dispute Support within 48 hours for immediate mediation or a refund.",
+      "Your payout stays on hold. If there is any dissatisfaction, you can request a complimentary revision from the artisan through our in-app chat or escalate to Quickfiss Dispute Support within 48 hours for immediate mediation or a refund.",
   },
   {
     question: "How much does it cost to use Quickfiss?",
@@ -220,7 +220,7 @@ export default function HomePage() {
                   variants={fadeUpVariants}
                   className="mt-5 text-base leading-relaxed text-muted sm:text-lg lg:max-w-xl"
                 >
-                  Quickfiss connects homeowners and businesses with background-checked mechanics, plumbers, electricians, caterers, and technicians. Safe escrow payments and guaranteed satisfaction on every job.
+                  Quickfiss connects homeowners and businesses with background-checked mechanics, plumbers, electricians, caterers, and technicians. Protected payments on every job.
                 </motion.p>
 
                 {/* Hero Search Box */}
@@ -275,7 +275,7 @@ export default function HomePage() {
                   </div>
                   <div className="flex items-center gap-2 transition-transform hover:scale-105">
                     <Card size={18} color="#3d5afe" variant="Bold" />
-                    <span className="font-semibold text-foreground">Paystack Escrow Security</span>
+                    <span className="font-semibold text-foreground">Paystack-secured payments</span>
                   </div>
                   <div className="flex items-center gap-2 transition-transform hover:scale-105">
                     <Star1 size={18} color="#f59e0b" variant="Bold" />
@@ -346,7 +346,7 @@ export default function HomePage() {
                       </div>
                       <div className="mt-1 flex items-center gap-1.5 text-[11px] text-zinc-500">
                         <ShieldTick size={14} color="#3d5afe" variant="Bold" />
-                        Protected by Quickfiss Escrow Payout
+                        Payment held until the job is confirmed
                       </div>
                     </div>
 
@@ -593,9 +593,9 @@ export default function HomePage() {
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary-light text-primary transition-transform duration-300 hover:scale-110">
                   <Card size={26} color="#3d5afe" variant="Bold" />
                 </div>
-                <h3 className="mt-5 text-base font-bold text-foreground">Paystack Escrow Wallets</h3>
+                <h3 className="mt-5 text-base font-bold text-foreground">Protected Payments</h3>
                 <p className="mt-2 text-xs leading-relaxed text-muted">
-                  Your payment is locked safely in escrow. Artisans only receive payout once you test, inspect, and confirm complete satisfaction with the job.
+                  Your payment is held by Quickfiss. Providers are paid once you confirm the job, or after the 48-hour review window if no problem is reported.
                 </p>
               </motion.div>
 
@@ -703,9 +703,9 @@ export default function HomePage() {
                     <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-lg font-black text-white shadow-md shadow-primary/30">
                       2
                     </div>
-                    <h3 className="mt-5 text-lg font-bold text-foreground">Schedule & Fund Escrow</h3>
+                    <h3 className="mt-5 text-lg font-bold text-foreground">Schedule & Pay</h3>
                     <p className="mt-2 text-xs leading-relaxed text-muted">
-                      Pick your preferred date and time. Fund the booking securely via Paystack. Your money remains protected in escrow until the job is done.
+                      Pick your preferred date and time. Fund the booking securely via Paystack. Your payment is held until the job is done.
                     </p>
                   </motion.div>
 
@@ -753,7 +753,7 @@ export default function HomePage() {
                     </div>
                     <h3 className="mt-5 text-lg font-bold text-foreground">Receive Guaranteed Bookings</h3>
                     <p className="mt-2 text-xs leading-relaxed text-muted">
-                      Receive verified job requests from clients around you. Every booking is backed by escrow funds already committed before you start work.
+                      Receive verified job requests from clients around you. Every booking is paid for by the customer before you start work.
                     </p>
                   </motion.div>
 
@@ -796,7 +796,7 @@ export default function HomePage() {
                   For decades, finding a trusted artisan in African cities meant relying on unreliable word-of-mouth, uncertain pricing, and the risk of shoddy workmanship. Meanwhile, brilliant craftsmen struggled with unsteady incomes and client distrust.
                 </p>
                 <p className="mt-3 text-sm leading-relaxed text-muted sm:text-base">
-                  Quickfiss bridges this divide. By providing structured identity verification, transparent escrow payments, and an in-app dispute resolution framework, we are dignifying artisan labor while giving every household absolute peace of mind.
+                  Quickfiss bridges this divide. By providing structured identity verification, transparent payments, and an in-app dispute resolution framework, we are dignifying artisan labor while giving every household absolute peace of mind.
                 </p>
 
                 <div className="mt-8 flex flex-col gap-3 sm:flex-row">
@@ -956,8 +956,8 @@ export default function HomePage() {
                       <Location size={20} color="currentColor" variant="Bold" />
                     </div>
                     <div>
-                      <p className="font-bold">Lagos Head Office</p>
-                      <p className="text-xs text-muted">14 Adeola Odeku St, Victoria Island, Lagos</p>
+                      <p className="font-bold">Office</p>
+                      <p className="text-xs text-muted">163 Oboro Road, Rumudara, Port Harcourt</p>
                     </div>
                   </div>
 
@@ -966,8 +966,8 @@ export default function HomePage() {
                       <Call size={20} color="currentColor" variant="Bold" />
                     </div>
                     <div>
-                      <p className="font-bold">Customer Hotline</p>
-                      <p className="text-xs text-muted">+234 1 800 QUICK (Mon - Sun, 24/7)</p>
+                      <p className="font-bold">Phone</p>
+                      <p className="text-xs text-muted">0816049262</p>
                     </div>
                   </div>
 

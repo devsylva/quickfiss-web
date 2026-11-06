@@ -68,12 +68,12 @@ export const bookingsApi = {
   },
 
   /**
-   * Provider declines, or the customer cancels. Money already paid is refunded.
+   * Provider declines, or the customer cancels. Money already paid is refunded to the original payment method (or the wallet, if the customer chooses).
    */
-  rejectBooking: (bookingId: string, reason?: string) => {
+  rejectBooking: (bookingId: string, reason?: string, refundTo?: "wallet") => {
     return apiClient<Booking>(`/api/bookings/${bookingId}/reject/`, {
       method: "POST",
-      body: { reason },
+      body: { reason, refund_to: refundTo },
       requiresAuth: true,
     });
   },

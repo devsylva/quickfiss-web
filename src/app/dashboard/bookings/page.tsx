@@ -32,6 +32,7 @@ function BookingsContent() {
   const [notice, setNotice] = useState<string | null>(null);
   const [cancelTarget, setCancelTarget] = useState<Booking | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [refundToWallet, setRefundToWallet] = useState(false);
   const [reviewTarget, setReviewTarget] = useState<Booking | null>(null);
   const [stars, setStars] = useState(0);
   const [reviewText, setReviewText] = useState("");
@@ -71,7 +72,7 @@ function BookingsContent() {
     }
 
     async function settleReturnedPayment() {
-      // Coming back from Paystack: confirm the card payment so the money moves into escrow.
+      // Coming back from Paystack: confirm the card payment so the payment is held.
       if (!returnedFor) return;
       try {
         const updated = await bookingsApi.verifyPayment(returnedFor);
@@ -142,7 +143,7 @@ function BookingsContent() {
     setIsCancelling(true);
     setActionError(null);
     try {
-      replaceBooking(await bookingsApi.rejectBooking(cancelTarget.id));
+      replaceBooking(await bookingsApi.rejectBooking(cancelTarget.id, undefined, refundToWallet ? "wallet" : undefined));
       setCancelTarget(null);
       setNotice("Your booking has been cancelled.");
     } catch (err: unknown) {
@@ -339,7 +340,7 @@ function BookingsContent() {
                         {booking.payment_status === "unpaid"
                           ? "Quote"
                           : booking.payment_status === "held"
-                            ? "Held in escrow"
+                            ? "Payment held"
                             : booking.payment_status === "disputed"
                               ? "Payment on hold"
                               : booking.payment_status === "refunded"
@@ -428,6 +429,7 @@ function BookingsContent() {
                         type="button"
                         onClick={() => {
                           setActionError(null);
+                          setRefundToWallet(false);
                           setCancelTarget(booking);
                         }}
                         className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-700 transition-colors hover:bg-red-50"
@@ -465,7 +467,27 @@ function BookingsContent() {
         <h2 className="text-lg font-bold text-foreground">Cancel this booking?</h2>
         <p className="mt-2 text-sm text-muted">
           {cancelTarget?.artisan_name || "The provider"} will be told it&rsquo;s been cancelled.
-          {cancelTarget?.payment_status === "held" ? " Your payment will be refunded to your wallet." : ""}
+          {cancelTarget?.payment_status === "held"
+            ? " Your payment will be refunded to the way you paid. Card refunds can take a few business days to show."
+            : ""}
+        </p>
+        {cancelTarget?.payment_status === "held" && (
+          <label className="mt-3 flex items-start gap-2 text-xs text-zinc-700">
+            <input
+              type="checkbox"
+              className="mt-0.5"
+              checked={refundToWallet}
+              onChange={(e) => setRefundToWallet(e.target.checked)}
+            />
+            <span>Credit my Quickfiss wallet instead (instant, only if you prefer this)</span>
+          </label>
+        )}
+        <p className="mt-3 text-[11px] text-muted">
+          Cancelling at least 2 hours before the appointment is free. A late cancellation charge applies only if it was
+          shown before booking.{" "}
+          <Link href="/refund-policy" className="font-semibold text-primary underline">
+            Read the refund policy
+          </Link>
         </p>
         {actionError && (
           <p className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-medium text-red-700">{actionError}</p>

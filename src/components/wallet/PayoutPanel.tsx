@@ -160,7 +160,7 @@ export function PayoutPanel({ onWithdrawn }: { onWithdrawn: (message: string) =>
       <div className="mt-4 grid grid-cols-3 gap-3 text-center">
         {[
           ["Ready to withdraw", stats?.available ?? 0],
-          ["Held in escrow", stats?.in_escrow ?? 0],
+          ["Held for jobs", stats?.in_escrow ?? 0],
           ["Total earned", stats?.earned ?? 0],
         ].map(([label, value]) => (
           <div key={label as string} className="rounded-xl bg-zinc-50 p-3">

@@ -12,7 +12,7 @@ export type ProviderBookingTab = "new" | "active" | "completed";
 
 const PAYMENT_BADGE: Record<string, { label: string; style: string }> = {
   unpaid: { label: "Awaiting payment", style: "bg-amber-50 text-amber-700" },
-  held: { label: "Paid · in escrow", style: "bg-[#e8f5e9] text-[#2e7d32]" },
+  held: { label: "Paid · held", style: "bg-[#e8f5e9] text-[#2e7d32]" },
   released: { label: "Paid out", style: "bg-emerald-50 text-emerald-700" },
   refunded: { label: "Refunded", style: "bg-zinc-100 text-zinc-600" },
   disputed: { label: "Under review", style: "bg-red-50 text-red-700" },

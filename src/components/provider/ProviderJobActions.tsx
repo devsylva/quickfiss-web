@@ -118,7 +118,7 @@ export function ProviderJobActions({ booking, onChange, compact }: Props) {
                 <h2 className="text-lg font-extrabold text-foreground">Quote your price</h2>
                 <p className="mt-1 text-xs text-muted">
                   {booking.budget ? `The customer's budget is ${formatNaira(booking.budget)}. ` : ""}
-                  They&apos;ll pay this into escrow. You&apos;re paid when the job is confirmed, minus Quickfiss&apos;s
+                  They&apos;ll pay this up front. You&apos;re paid when the job is confirmed, minus Quickfiss&apos;s
                   service fee.
                 </p>
                 <label className="mt-4 block text-xs font-semibold text-foreground" htmlFor="quote-price">

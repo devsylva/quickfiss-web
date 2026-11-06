@@ -164,9 +164,16 @@ function BookingStep4Inner({ provider }: { provider: Provider }) {
               </div>
               <ol className="mt-2 list-decimal space-y-1 pl-5 text-xs leading-relaxed text-zinc-700">
                 <li>{provider.name} accepts and sends you a price.</li>
-                <li>You pay into escrow. Quickfiss holds the money safely.</li>
+                <li>You pay now. Quickfiss holds the payment until the job is confirmed.</li>
                 <li>Once the job is done and you confirm, they&rsquo;re paid.</li>
               </ol>
+              <p className="mt-3 text-[11px] leading-relaxed text-zinc-600">
+                Cancel free up to 2 hours before the appointment. Refunds go back to your original payment method. Any
+                attendance or call-out fee is shown by the provider in their quote before you pay.{" "}
+                <Link href="/refund-policy" className="font-semibold text-primary underline">
+                  Cancellation &amp; refund policy
+                </Link>
+              </p>
             </div>
           </div>
 

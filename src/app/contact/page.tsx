@@ -6,6 +6,7 @@ import { Location, Call, Sms, Clock, TickCircle, MessageQuestion } from "iconsax
 import { LandingNavbar } from "@/components/landing/LandingNavbar";
 import { LandingFooter } from "@/components/landing/LandingFooter";
 import { coreApi } from "@/lib/api/core";
+import { COMPANY } from "@/lib/company";
 
 export default function ContactPage() {
   const [name, setName] = useState("");
@@ -74,8 +75,8 @@ export default function ContactPage() {
                         <Location size={22} color="#3d5afe" variant="Bold" />
                       </div>
                       <div>
-                        <p className="font-bold text-foreground">Headquarters</p>
-                        <p className="mt-0.5 text-xs text-muted">14 Adeola Odeku Street, Victoria Island, Lagos, Nigeria</p>
+                        <p className="font-bold text-foreground">Office</p>
+                        <p className="mt-0.5 text-xs text-muted">{COMPANY.address}</p>
                       </div>
                     </div>
 
@@ -85,9 +86,8 @@ export default function ContactPage() {
                       </div>
                       <div>
                         <p className="font-bold text-foreground">Phone & WhatsApp</p>
-                        <p className="mt-0.5 text-xs text-muted">+234 1 800 QUICK (784-253)</p>
-                        <p className="text-[11px] text-zinc-500">Toll-free across all Nigerian networks</p>
-                      </div>
+                        <p className="mt-0.5 text-xs text-muted">{COMPANY.phone}</p>
+                                              </div>
                     </div>
 
                     <div className="flex items-start gap-3.5">
@@ -96,8 +96,8 @@ export default function ContactPage() {
                       </div>
                       <div>
                         <p className="font-bold text-foreground">Customer Email</p>
-                        <p className="mt-0.5 text-xs text-muted">support@quickfiss.com</p>
-                        <p className="text-[11px] text-zinc-500">Average response time: 15 minutes</p>
+                        <p className="mt-0.5 text-xs text-muted">{COMPANY.supportEmail}</p>
+                        <p className="text-[11px] text-zinc-500">We aim to acknowledge messages within 2 business days</p>
                       </div>
                     </div>
 
@@ -107,7 +107,7 @@ export default function ContactPage() {
                       </div>
                       <div>
                         <p className="font-bold text-foreground">Operational Hours</p>
-                        <p className="mt-0.5 text-xs text-muted">Monday &ndash; Sunday: 24 Hours Active</p>
+                        <p className="mt-0.5 text-xs text-muted">Support hours to be announced</p>
                       </div>
                     </div>
                   </div>
@@ -119,7 +119,7 @@ export default function ContactPage() {
                       <span>Have a quick question?</span>
                     </div>
                     <p className="mt-1 text-xs text-zinc-600">
-                      Check our frequently asked questions on escrow protection, vetting, and refunds.
+                      Check our frequently asked questions on payments, vetting, and refunds.
                     </p>
                     <Link
                       href="/#faq"
@@ -184,7 +184,7 @@ export default function ContactPage() {
                         >
                           <option value="General Support">General Support</option>
                           <option value="Artisan Registration">Artisan Verification & Registration</option>
-                          <option value="Escrow & Payment Support">Escrow & Payment Question</option>
+                          <option value="Payment Support">Payment Question</option>
                           <option value="Job Dispute">Job Dispute / Quality Issue</option>
                           <option value="Corporate Partnership">Corporate Partnership</option>
                         </select>

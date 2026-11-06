@@ -5,7 +5,6 @@ import Link from "next/link";
 import { AuthLayout } from "@/components/layout/AuthLayout";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
-import { AppleIcon, GoogleIcon } from "@/components/icons";
 import { isValidEmail } from "@/lib/validation";
 
 import { useRouter } from "next/navigation";
@@ -118,22 +117,7 @@ export default function SignInPage() {
           </Button>
         </div>
 
-        <div className="my-6 flex items-center gap-3">
-          <span className="h-px flex-1 bg-border" />
-          <span className="text-xs text-muted">or</span>
-          <span className="h-px flex-1 bg-border" />
-        </div>
-
-        <div className="flex flex-col gap-3">
-          <Button type="button" variant="oauth">
-            <GoogleIcon />
-            Continue with Google
-          </Button>
-          <Button type="button" variant="oauth">
-            <AppleIcon />
-            Continue with Apple
-          </Button>
-        </div>
+        {/* Google / Apple sign-in hidden until the OAuth integration is built. */}
 
         <p className="mt-6 text-center text-sm text-muted">
           Don&rsquo;t have an account?{" "}

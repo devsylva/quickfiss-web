@@ -23,7 +23,7 @@ type LoadState =
   | { status: "error"; message: string };
 
 const PAYMENT_LABELS: Record<string, string> = {
-  escrow: "Secure escrow",
+  escrow: "Held until confirmed",
   paystack: "Paystack",
   korapay: "Kora Pay",
   "after-service": "Payment after service",

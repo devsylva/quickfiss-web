@@ -178,7 +178,7 @@ export function ProviderDashboardHome() {
           </div>
           <p className="mt-2 text-xl font-extrabold text-foreground sm:text-2xl">{stats?.active_jobs ?? 0}</p>
           <span className="mt-1 inline-block text-[11px] font-semibold text-primary">
-            {formatNaira(stats?.in_escrow ?? 0)} in escrow
+            {formatNaira(stats?.in_escrow ?? 0)} held
           </span>
         </div>
 
